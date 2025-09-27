@@ -11,8 +11,7 @@ const requiredPackages = {
     '@ffmpeg-installer/ffmpeg': '1.1.0',
     'ffmpeg-static': '5.2.0',
     '@discordjs/voice': '0.18.0',
-    '@discordjs/opus': '0.9.0',
-    'mongoose': '8.8.3'
+    '@discordjs/opus': '0.9.0'
 };
 
 console.log('🔍 فحص المكتبات المطلوبة...');
@@ -69,20 +68,13 @@ class AdvancedYouTubeManager {
             per24Hours: 200   // 200 طلب في 24 ساعة
         };
         this.cooldownUntil = 0;
-        this.proxies = this.loadProxies();
         this.cookies = this.loadCookies();
-        this.currentProxyIndex = 0;
         
         // تنظيف التاريخ كل ساعة
         setInterval(() => this.cleanHistory(), 3600000);
     }
 
-    loadProxies() {
-        // يمكن إضافة proxies من متغيرات البيئة
-        const proxyList = process.env.PROXY_LIST ? process.env.PROXY_LIST.split(',') : [];
-        console.log(`🌐 تم تحميل ${proxyList.length} proxy`);
-        return proxyList;
-    }
+
 
     loadCookies() {
         // تحميل YouTube cookies من متغيرات البيئة
@@ -201,12 +193,7 @@ class AdvancedYouTubeManager {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    getNextProxy() {
-        if (this.proxies.length === 0) return null;
-        const proxy = this.proxies[this.currentProxyIndex];
-        this.currentProxyIndex = (this.currentProxyIndex + 1) % this.proxies.length;
-        return proxy;
-    }
+
 }
 
 // إنشاء مدير YouTube المتقدم
@@ -230,8 +217,7 @@ const server = http.createServer((req, res) => {
         youtube_stats: {
             queue_length: youtubeManager.requestQueue.length,
             requests_today: youtubeManager.requestHistory.length,
-            cooldown_active: Date.now() < youtubeManager.cooldownUntil,
-            proxies_available: youtubeManager.proxies.length
+            cooldown_active: Date.now() < youtubeManager.cooldownUntil
         }
     }, null, 2));
 });
@@ -268,7 +254,7 @@ try {
 try {
     if (process.env.BOT_TOKEN) {
         bots = [{
-            name: "AdvancedMusicBot",
+            name: "Anxiety",
             token: process.env.BOT_TOKEN,
             textChannel: process.env.TEXT_CHANNEL_ID || null
         }];

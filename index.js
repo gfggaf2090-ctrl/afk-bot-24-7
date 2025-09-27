@@ -74,8 +74,6 @@ class AdvancedYouTubeManager {
         setInterval(() => this.cleanHistory(), 3600000);
     }
 
-
-
     loadCookies() {
         // تحميل YouTube cookies من متغيرات البيئة
         const cookies = process.env.YOUTUBE_COOKIES || '';
@@ -192,8 +190,6 @@ class AdvancedYouTubeManager {
     async delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
-
-
 }
 
 // إنشاء مدير YouTube المتقدم
@@ -402,14 +398,10 @@ function createBot(config) {
                         url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
                     },
                     footer: { text: "Anxiety Music Bot" }
-تحدث في الروم.",
-                    thumbnail: {
-                        url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
-                    }
                 }]
             });
         }
-    }
+    });
 
     // أحداث DisTube مع Streaming
     distube
@@ -689,412 +681,324 @@ function createBot(config) {
     return { client, distube };
 }
 
-// تشغيل البوتات
-console.log('🚀 بدء تشغيل بوت Anxiety...');
-console.log(`🌍 البيئة: ${process.env.NODE_ENV || 'development'}`);
-console.log(`🖥️ Node.js: ${process.version}`);
-console.log(`💾 الذاكرة: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB`);
-
-if (bots && bots.length > 0) {
-    console.log(`🤖 بدء تشغيل ${bots.length} بوت...`);
-    bots.forEach((config, index) => {
-        console.log(`\n--- تشغيل البوت ${index + 1}: ${config.name} ---`);
-        createBot(config);
-    });
-    console.log('\n🎉 تم بدء تشغيل بوت Anxiety بنجاح!');
-    console.log('🛡️ نظام الحماية من 429 نشط');
-} else {
-    console.error("❌ لم يتم العثور على أي بوتات في الإعدادات");
-    console.error("💡 تأكد من وجود BOT_TOKEN في متغيرات البيئة أو config.json");
-    process.exit(1);
-}
-
-// keep-alive محسن للاستضافة السحابية
-if (process.env.NODE_ENV === 'production') {
-    const keepAliveInterval = setInterval(() => {
-        http.get(`http://localhost:${PORT}`, (res) => {
-            const status = res.statusCode === 200 ? "✅" : "⚠️";
-            console.log(`${status} Keep-alive: ${res.statusCode} | Queue: ${youtubeManager.requestQueue.length} | Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
-        }).on('error', (err) => {
-            console.log('🔴 Keep-alive failed:', err.message);
-        });
-    }, 25 * 60 * 1000); // كل 25 دقيقة
-    
-    console.log('🔄 Advanced keep-alive system activated');
-});
-
-    // دالة التشغيل المحسنة
-    async function handlePlayCommand(message, query, distube) {
-        if (!message.member.voice.channel) {
-            return message.channel.send({
-                embeds: [{
-                    color: 0xff0000,
-                    title: "يجب أن تكون في روم صوتي أولاً",
-                    thumbnail: {
-                        url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
-                    }
-                }]
-            });
-        }
-
-        if (!query) {
-            return message.channel.send({
-                embeds: [{
-                    color: 0xff0000,
-                    title: "اكتب اسم الأغنية بعد الأمر",
-                    description: "مثال: ش أم كلثوم",
-                    thumbnail: {
-                        url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
-                    }
-                }]
-            });
-        }
-
-        const loadingMsg = await message.channel.send({
+// دالة التشغيل المحسنة
+async function handlePlayCommand(message, query, distube) {
+    if (!message.member.voice.channel) {
+        return message.channel.send({
             embeds: [{
-                color: 0xffa500,
-                title: "البحث الذكي",
-                description: `جاري البحث عن: **${query}**\nالموضع في القائمة: ${youtubeManager.requestQueue.length + 1}`,
-                fields: [
-                    { name: "حالة النظام", value: `طلبات اليوم: ${youtubeManager.requestHistory.length}/200`, inline: true },
-                    { name: "YouTube", value: Date.now() < youtubeManager.cooldownUntil ? "انتظار" : "جاهز", inline: true }
-                ],
+                color: 0xff0000,
+                title: "يجب أن تكون في روم صوتي أولاً",
                 thumbnail: {
                     url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
-                },
-                footer: { text: "Anxiety - نظام حماية متقدم" }
+                }
             }]
         });
-
-        try {
-            await youtubeManager.addRequest(async () => {
-                return await distube.play(message.member.voice.channel, query, {
-                    member: message.member,
-                    textChannel: message.channel,
-                    message,
-                });
-            }, { query, guild: message.guild.name, user: message.author.tag });
-            
-            await loadingMsg.delete().catch(() => {});
-            
-        } catch (error) {
-            console.error("خطأ في handlePlayCommand:", error.message);
-            await handlePlayError(error, loadingMsg, query, message, distube);
-        }
     }
 
-    // معالج أخطاء متقدم
-    async function handlePlayError(error, loadingMsg, query, message, distube) {
-        const errorMessage = error.message.toLowerCase();
+    if (!query) {
+        return message.channel.send({
+            embeds: [{
+                color: 0xff0000,
+                title: "اكتب اسم الأغنية بعد الأمر",
+                description: "مثال: ش أم كلثوم",
+                thumbnail: {
+                    url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
+                }
+            }]
+        });
+    }
+
+    const loadingMsg = await message.channel.send({
+        embeds: [{
+            color: 0xffa500,
+            title: "البحث الذكي",
+            description: `جاري البحث عن: **${query}**\nالموضع في القائمة: ${youtubeManager.requestQueue.length + 1}`,
+            fields: [
+                { name: "حالة النظام", value: `طلبات اليوم: ${youtubeManager.requestHistory.length}/200`, inline: true },
+                { name: "YouTube", value: Date.now() < youtubeManager.cooldownUntil ? "انتظار" : "جاهز", inline: true }
+            ],
+            thumbnail: {
+                url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
+            },
+            footer: { text: "Anxiety - نظام حماية متقدم" }
+        }]
+    });
+
+    try {
+        await youtubeManager.addRequest(async () => {
+            return await distube.play(message.member.voice.channel, query, {
+                member: message.member,
+                textChannel: message.channel,
+                message,
+            });
+        }, { query, guild: message.guild.name, user: message.author.tag });
         
-        if (youtubeManager.is429Error(error)) {
-            await loadingMsg.edit({
-                embeds: [{
-                    color: 0xff9500,
-                    title: "نظام الحماية نشط",
-                    description: `تم تفعيل الحماية من 429 لضمان استمرارية الخدمة.\n\nالأغنية المطلوبة: ${query}`,
-                    fields: [
-                        {
-                            name: "ما يحدث الآن",
-                            value: "تم إضافة طلبك لقائمة الانتظار الذكية\nسيتم تشغيله تلقائياً عند زوال المنع\nالنظام يحمي البوت من التوقف",
-                            inline: false
-                        },
-                        {
-                            name: "الوقت المتوقع",
-                            value: "5-15 دقيقة في المتوسط\nيتم المحاولة تلقائياً\nلا حاجة لإعادة الطلب",
-                            inline: false
-                        }
-                    ],
-                    thumbnail: {
-                        url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
-                    },
-                    footer: { text: "Anxiety - نظام حماية متقدم" },
-                    timestamp: new Date()
-                }]
-            });
-        } else {
-            await loadingMsg.edit({
-                embeds: [{
-                    color: 0xff0000,
-                    title: "خطأ في التشغيل",
-                    description: "حدث خطأ أثناء محاولة تشغيل الأغنية",
-                    fields: [{
-                        name: "الحلول المقترحة",
-                        value: "جرب أغنية أخرى\nانتظر دقيقة وأعد المحاولة\nاستخدم كلمات أبسط",
-                        inline: false
-                    }],
-                    thumbnail: {
-                        url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
-                    },
-                    footer: { text: "Anxiety Bot" }
-                }]
-            });
-        }
+        await loadingMsg.delete().catch(() => {});
+        
+    } catch (error) {
+        console.error("خطأ في handlePlayCommand:", error.message);
+        await handlePlayError(error, loadingMsg, query, message, distube);
     }
+}
 
-    // باقي الدوال المطلوبة
-    async function handleSkipCommand(message, distube) {
-        try {
-            const queue = distube.getQueue(message.guild.id);
-            if (!queue || !queue.songs || queue.songs.length <= 1) {
-                return message.channel.send({
-                    embeds: [{
-                        color: 0xff0000,
-                        title: "لا توجد أغاني أخرى للتخطي",
-                        thumbnail: {
-                            url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
-                        }
-                    }]
-                });
-            }
-
-            const currentSong = queue.songs[0];
-            await distube.skip(message.guild.id);
-            
-            message.channel.send({
-                embeds: [{
-                    color: 0xffa500,
-                    title: "تم تخطي الأغنية",
-                    description: `تم تخطي: **${currentSong.name}**`,
-                    thumbnail: {
-                        url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
-                    },
-                    footer: { text: `بقي في القائمة: ${queue.songs.length - 1} أغنية` }
-                }]
-            });
-        } catch (error) {
-            console.error("خطأ في تخطي الأغنية:", error);
-            message.channel.send("لا يمكن تخطي الأغنية حالياً.");
-        }
-    }
-
-    async function handleStopCommand(message, distube) {
-        try {
-            const queue = distube.getQueue(message.guild.id);
-            if (!queue) {
-                return message.channel.send("لا توجد موسيقى قيد التشغيل.");
-            }
-
-            await distube.stop(message.guild.id);
-            
-            message.channel.send({
-                embeds: [{
-                    color: 0xff0000,
-                    title: "تم إيقاف الموسيقى",
-                    description: "تم إيقاف جميع الأغاني وإفراغ القائمة\n\nالبوت سيبقى في الروم 24/7\nجاهز لتشغيل أغاني جديدة فوراً!",
-                    thumbnail: {
-                        url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
-                    },
-                    footer: { text: "Anxiety - البوت نشط 24/7" }
-                }]
-            });
-        } catch (error) {
-            console.error("خطأ في إيقاف الموسيقى:", error);
-            message.channel.send("لا يمكن إيقاف الموسيقى حالياً.");
-        }
-    }
-
-    async function handlePauseCommand(message, distube) {
-        try {
-            const queue = distube.getQueue(message.guild.id);
-            if (!queue) return message.channel.send("لا توجد موسيقى قيد التشغيل.");
-            if (queue.paused) return message.channel.send("الموسيقى متوقفة مؤقتاً بالفعل.");
-
-            await distube.pause(message.guild.id);
-            message.channel.send({
-                embeds: [{
-                    color: 0xffa500,
-                    title: "تم إيقاف الموسيقى مؤقتاً",
-                    description: `تم إيقاف: **${queue.songs[0].name}** مؤقتاً\n\nاستخدم أمر "كمل" للاستكمال`,
-                    thumbnail: {
-                        url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
-                    }
-                }]
-            });
-        } catch (error) {
-            message.channel.send("لا يمكن إيقاف الموسيقى مؤقتاً حالياً.");
-        }
-    }
-
-    async function handleResumeCommand(message, distube) {
-        try {
-            const queue = distube.getQueue(message.guild.id);
-            if (!queue) return message.channel.send("لا توجد موسيقى قيد التشغيل.");
-            if (!queue.paused) return message.channel.send("الموسيقى تعمل بالفعل.");
-
-            await distube.resume(message.guild.id);
-            message.channel.send({
-                embeds: [{
-                    color: 0x00ff00,
-                    title: "تم استكمال التشغيل",
-                    description: `تم استكمال: **${queue.songs[0].name}**\n\nالتشغيل مستمر الآن!`,
-                    thumbnail: {
-                        url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
-                    }
-                }]
-            });
-        } catch (error) {
-            message.channel.send("لا يمكن استكمال الموسيقى حالياً.");
-        }
-    }
-
-    async function handleVolumeCommand(message, volume, distube) {
-        try {
-            const queue = distube.getQueue(message.guild.id);
-            if (!queue) return message.channel.send("لا توجد موسيقى قيد التشغيل.");
-
-            if (isNaN(volume) || volume < 0 || volume > 200) {
-                return message.channel.send("يجب أن يكون مستوى الصوت بين 0 و 200");
-            }
-
-            const oldVolume = queue.volume;
-            await distube.setVolume(message.guild.id, volume);
-            
-            message.channel.send({
-                embeds: [{
-                    color: 0x00ff00,
-                    title: "تم تغيير مستوى الصوت",
-                    description: `تم تغيير مستوى الصوت من **${oldVolume}%** إلى **${volume}%**`,
-                    thumbnail: {
-                        url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
-                    }
-                }]
-            });
-        } catch (error) {
-            message.channel.send("لا يمكن تغيير مستوى الصوت حالياً.");
-        }
-    }
-
-    async function handleLoopCommand(message, distube) {
-        try {
-            const queue = distube.getQueue(message.guild.id);
-            if (!queue) return message.channel.send("لا توجد موسيقى قيد التشغيل.");
-
-            let mode = distube.setRepeatMode(message.guild.id);
-            const modes = {
-                0: { name: "إيقاف التكرار", color: 0xff0000 },
-                1: { name: "تكرار الأغنية الحالية", color: 0x00ff00 },
-                2: { name: "تكرار القائمة كاملة", color: 0x0099ff }
-            };
-
-            message.channel.send({
-                embeds: [{
-                    color: modes[mode].color,
-                    title: "تم تغيير نمط التكرار",
-                    description: `النمط الجديد: ${modes[mode].name}`,
-                    thumbnail: {
-                        url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
-                    }
-                }]
-            });
-        } catch (error) {
-            message.channel.send("لا يمكن تغيير نمط التكرار حالياً.");
-        }
-    }
-
-    async function handleShuffleCommand(message, distube) {
-        try {
-            const queue = distube.getQueue(message.guild.id);
-            if (!queue || queue.songs.length <= 2) {
-                return message.channel.send("يجب أن تحتوي القائمة على أكثر من أغنيتين للخلط.");
-            }
-
-            await distube.shuffle(message.guild.id);
-            message.channel.send({
-                embeds: [{
-                    color: 0xff00ff,
-                    title: "تم خلط قائمة التشغيل",
-                    description: `تم خلط **${queue.songs.length}** أغنية بترتيب عشوائي`,
-                    thumbnail: {
-                        url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
-                    }
-                }]
-            });
-        } catch (error) {
-            message.channel.send("لا يمكن خلط القائمة حالياً.");
-        }
-    }
-
-    async function handleQueueCommand(message, distube) {
-        try {
-            const queue = distube.getQueue(message.guild.id);
-            if (!queue || !queue.songs || queue.songs.length === 0) {
-                return message.channel.send({
-                    embeds: [{
-                        color: 0xffa500,
-                        title: "قائمة التشغيل فارغة",
-                        description: "لا توجد أغاني في القائمة حالياً\nاستخدم ش [اسم الأغنية] لإضافة أغاني",
-                        thumbnail: {
-                            url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
-                        }
-                    }]
-                });
-            }
-
-            const currentSong = queue.songs[0];
-            const upcomingSongs = queue.songs.slice(1, 6);
-
-            const embed = {
-                color: 0x8B5A8C,
-                title: "قائمة التشغيل",
+// معالج أخطاء متقدم
+async function handlePlayError(error, loadingMsg, query, message, distube) {
+    const errorMessage = error.message.toLowerCase();
+    
+    if (youtubeManager.is429Error(error)) {
+        await loadingMsg.edit({
+            embeds: [{
+                color: 0xff9500,
+                title: "نظام الحماية نشط",
+                description: `تم تفعيل الحماية من 429 لضمان استمرارية الخدمة.\n\nالأغنية المطلوبة: ${query}`,
                 fields: [
                     {
-                        name: "الآن يتم تشغيل",
-                        value: `**${currentSong.name}**\n${currentSong.user}\n${currentSong.formattedDuration}`,
+                        name: "ما يحدث الآن",
+                        value: "تم إضافة طلبك لقائمة الانتظار الذكية\nسيتم تشغيله تلقائياً عند زوال المنع\nالنظام يحمي البوت من التوقف",
+                        inline: false
+                    },
+                    {
+                        name: "الوقت المتوقع",
+                        value: "5-15 دقيقة في المتوسط\nيتم المحاولة تلقائياً\nلا حاجة لإعادة الطلب",
                         inline: false
                     }
                 ],
                 thumbnail: {
                     url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
                 },
-                footer: {
-                    text: `إجمالي: ${queue.songs.length} أغنية | مدة: ${queue.formattedDuration}`
-                },
+                footer: { text: "Anxiety - نظام حماية متقدم" },
                 timestamp: new Date()
-            };
-
-            if (upcomingSongs.length > 0) {
-                const upcomingList = upcomingSongs.map((song, index) => 
-                    `${index + 1}. **${song.name}** - \`${song.formattedDuration}\``
-                ).join('\n');
-                
-                embed.fields.push({
-                    name: "القائمة القادمة",
-                    value: upcomingList + (queue.songs.length > 6 ? `\n...و ${queue.songs.length - 6} أغنية أخرى` : ''),
+            }]
+        });
+    } else {
+        await loadingMsg.edit({
+            embeds: [{
+                color: 0xff0000,
+                title: "خطأ في التشغيل",
+                description: "حدث خطأ أثناء محاولة تشغيل الأغنية",
+                fields: [{
+                    name: "الحلول المقترحة",
+                    value: "جرب أغنية أخرى\nانتظر دقيقة وأعد المحاولة\nاستخدم كلمات أبسط",
                     inline: false
-                });
-            }
-
-            message.channel.send({ embeds: [embed] });
-        } catch (error) {
-            message.channel.send("حدث خطأ أثناء عرض قائمة التشغيل.");
-        }
+                }],
+                thumbnail: {
+                    url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
+                },
+                footer: { text: "Anxiety Bot" }
+            }]
+        });
     }
+}
 
-    async function handleHelpCommand(message, client) {
-        const helpEmbed = {
+// باقي الدوال المطلوبة
+async function handleSkipCommand(message, distube) {
+    try {
+        const queue = distube.getQueue(message.guild.id);
+        if (!queue || !queue.songs || queue.songs.length <= 1) {
+            return message.channel.send({
+                embeds: [{
+                    color: 0xff0000,
+                    title: "لا توجد أغاني أخرى للتخطي",
+                    thumbnail: {
+                        url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
+                    }
+                }]
+            });
+        }
+
+        const currentSong = queue.songs[0];
+        await distube.skip(message.guild.id);
+        
+        message.channel.send({
+            embeds: [{
+                color: 0xffa500,
+                title: "تم تخطي الأغنية",
+                description: `تم تخطي: **${currentSong.name}**`,
+                thumbnail: {
+                    url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
+                },
+                footer: { text: `بقي في القائمة: ${queue.songs.length - 1} أغنية` }
+            }]
+        });
+    } catch (error) {
+        console.error("خطأ في تخطي الأغنية:", error);
+        message.channel.send("لا يمكن تخطي الأغنية حالياً.");
+    }
+}
+
+async function handleStopCommand(message, distube) {
+    try {
+        const queue = distube.getQueue(message.guild.id);
+        if (!queue) {
+            return message.channel.send("لا توجد موسيقى قيد التشغيل.");
+        }
+
+        await distube.stop(message.guild.id);
+        
+        message.channel.send({
+            embeds: [{
+                color: 0xff0000,
+                title: "تم إيقاف الموسيقى",
+                description: "تم إيقاف جميع الأغاني وإفراغ القائمة\n\nالبوت سيبقى في الروم 24/7\nجاهز لتشغيل أغاني جديدة فوراً!",
+                thumbnail: {
+                    url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
+                },
+                footer: { text: "Anxiety - البوت نشط 24/7" }
+            }]
+        });
+    } catch (error) {
+        console.error("خطأ في إيقاف الموسيقى:", error);
+        message.channel.send("لا يمكن إيقاف الموسيقى حالياً.");
+    }
+}
+
+async function handlePauseCommand(message, distube) {
+    try {
+        const queue = distube.getQueue(message.guild.id);
+        if (!queue) return message.channel.send("لا توجد موسيقى قيد التشغيل.");
+        if (queue.paused) return message.channel.send("الموسيقى متوقفة مؤقتاً بالفعل.");
+
+        await distube.pause(message.guild.id);
+        message.channel.send({
+            embeds: [{
+                color: 0xffa500,
+                title: "تم إيقاف الموسيقى مؤقتاً",
+                description: `تم إيقاف: **${queue.songs[0].name}** مؤقتاً\n\nاستخدم أمر "كمل" للاستكمال`,
+                thumbnail: {
+                    url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
+                }
+            }]
+        });
+    } catch (error) {
+        message.channel.send("لا يمكن إيقاف الموسيقى مؤقتاً حالياً.");
+    }
+}
+
+async function handleResumeCommand(message, distube) {
+    try {
+        const queue = distube.getQueue(message.guild.id);
+        if (!queue) return message.channel.send("لا توجد موسيقى قيد التشغيل.");
+        if (!queue.paused) return message.channel.send("الموسيقى تعمل بالفعل.");
+
+        await distube.resume(message.guild.id);
+        message.channel.send({
+            embeds: [{
+                color: 0x00ff00,
+                title: "تم استكمال التشغيل",
+                description: `تم استكمال: **${queue.songs[0].name}**\n\nالتشغيل مستمر الآن!`,
+                thumbnail: {
+                    url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
+                }
+            }]
+        });
+    } catch (error) {
+        message.channel.send("لا يمكن استكمال الموسيقى حالياً.");
+    }
+}
+
+async function handleVolumeCommand(message, volume, distube) {
+    try {
+        const queue = distube.getQueue(message.guild.id);
+        if (!queue) return message.channel.send("لا توجد موسيقى قيد التشغيل.");
+
+        if (isNaN(volume) || volume < 0 || volume > 200) {
+            return message.channel.send("يجب أن يكون مستوى الصوت بين 0 و 200");
+        }
+
+        const oldVolume = queue.volume;
+        await distube.setVolume(message.guild.id, volume);
+        
+        message.channel.send({
+            embeds: [{
+                color: 0x00ff00,
+                title: "تم تغيير مستوى الصوت",
+                description: `تم تغيير مستوى الصوت من **${oldVolume}%** إلى **${volume}%**`,
+                thumbnail: {
+                    url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
+                }
+            }]
+        });
+    } catch (error) {
+        message.channel.send("لا يمكن تغيير مستوى الصوت حالياً.");
+    }
+}
+
+async function handleLoopCommand(message, distube) {
+    try {
+        const queue = distube.getQueue(message.guild.id);
+        if (!queue) return message.channel.send("لا توجد موسيقى قيد التشغيل.");
+
+        let mode = distube.setRepeatMode(message.guild.id);
+        const modes = {
+            0: { name: "إيقاف التكرار", color: 0xff0000 },
+            1: { name: "تكرار الأغنية الحالية", color: 0x00ff00 },
+            2: { name: "تكرار القائمة كاملة", color: 0x0099ff }
+        };
+
+        message.channel.send({
+            embeds: [{
+                color: modes[mode].color,
+                title: "تم تغيير نمط التكرار",
+                description: `النمط الجديد: ${modes[mode].name}`,
+                thumbnail: {
+                    url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
+                }
+            }]
+        });
+    } catch (error) {
+        message.channel.send("لا يمكن تغيير نمط التكرار حالياً.");
+    }
+}
+
+async function handleShuffleCommand(message, distube) {
+    try {
+        const queue = distube.getQueue(message.guild.id);
+        if (!queue || queue.songs.length <= 2) {
+            return message.channel.send("يجب أن تحتوي القائمة على أكثر من أغنيتين للخلط.");
+        }
+
+        await distube.shuffle(message.guild.id);
+        message.channel.send({
+            embeds: [{
+                color: 0xff00ff,
+                title: "تم خلط قائمة التشغيل",
+                description: `تم خلط **${queue.songs.length}** أغنية بترتيب عشوائي`,
+                thumbnail: {
+                    url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
+                }
+            }]
+        });
+    } catch (error) {
+        message.channel.send("لا يمكن خلط القائمة حالياً.");
+    }
+}
+
+async function handleQueueCommand(message, distube) {
+    try {
+        const queue = distube.getQueue(message.guild.id);
+        if (!queue || !queue.songs || queue.songs.length === 0) {
+            return message.channel.send({
+                embeds: [{
+                    color: 0xffa500,
+                    title: "قائمة التشغيل فارغة",
+                    description: "لا توجد أغاني في القائمة حالياً\nاستخدم ش [اسم الأغنية] لإضافة أغاني",
+                    thumbnail: {
+                        url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
+                    }
+                }]
+            });
+        }
+
+        const currentSong = queue.songs[0];
+        const upcomingSongs = queue.songs.slice(1, 6);
+
+        const embed = {
             color: 0x8B5A8C,
-            title: "Anxiety - دليل الأوامر الكامل",
-            description: "بوت موسيقي متطور مع حماية كاملة من خطأ 429",
+            title: "قائمة التشغيل",
             fields: [
                 {
-                    name: "تشغيل الموسيقى",
-                    value: "**ش [اسم الأغنية]** - الأمر الرئيسي\n**شغل [اسم الأغنية]** - تشغيل أغنية\n**play [song name]** - تشغيل بالإنجليزية",
-                    inline: false
-                },
-                {
-                    name: "التحكم في التشغيل",
-                    value: "**وقف** / **pause** - إيقاف مؤقت\n**كمل** / **resume** - استكمال التشغيل\n**س** / **skip** - تخطي الأغنية\n**ق** / **stop** - إيقاف كامل",
-                    inline: false
-                },
-                {
-                    name: "التحكم المتقدم",
-                    value: "**صوت [0-200]** - تغيير مستوى الصوت\n**تكرار** - تبديل أنماط التكرار\n**خلط** - خلط القائمة عشوائياً",
-                    inline: false
-                },
-                {
-                    name: "المعلومات",
-                    value: "**قائمة** - عرض قائمة التشغيل\n**معلومات** - معلومات البوت\n**انضم** - الانضمام للروم الصوتي",
+                    name: "الآن يتم تشغيل",
+                    value: `**${currentSong.name}**\n${currentSong.user}\n${currentSong.formattedDuration}`,
                     inline: false
                 }
             ],
@@ -1102,113 +1006,142 @@ if (process.env.NODE_ENV === 'production') {
                 url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
             },
             footer: {
-                text: "Anxiety Music Bot - تشغيل 24/7",
-                icon_url: client.user?.displayAvatarURL()
+                text: `إجمالي: ${queue.songs.length} أغنية | مدة: ${queue.formattedDuration}`
             },
             timestamp: new Date()
         };
 
-        message.channel.send({ embeds: [helpEmbed] });
-    }
-
-    async function handleInfoCommand(message, client) {
-        const uptime = process.uptime();
-        const uptimeString = `${Math.floor(uptime / 3600)}س ${Math.floor((uptime % 3600) / 60)}د`;
-        const memoryUsage = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
-
-        const infoEmbed = {
-            color: 0x8B5A8C,
-            title: "معلومات البوت Anxiety",
-            description: "بوت موسيقي متطور مع حماية شاملة من أخطاء YouTube",
-            fields: [
-                { name: "اسم البوت", value: client.user.username, inline: true },
-                { name: "مدة التشغيل", value: uptimeString, inline: true },
-                { name: "الخوادم", value: client.guilds.cache.size.toString(), inline: true },
-                { name: "البنغ", value: `${Math.round(client.ws.ping)}ms`, inline: true },
-                { name: "استهلاك الذاكرة", value: `${memoryUsage} MB`, inline: true },
-                { name: "قائمة انتظار YouTube", value: `${youtubeManager.requestQueue.length} طلب`, inline: true },
-                { name: "طلبات اليوم", value: `${youtubeManager.requestHistory.length}/200`, inline: true },
-                { name: "YouTube Cookies", value: youtubeManager.cookies ? "متوفرة" : "غير متوفرة", inline: true }
-            ],
-            thumbnail: {
-                url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
-            },
-            footer: {
-                text: "Anxiety - تم تطويره بتقنيات متقدمة",
-                icon_url: client.user?.displayAvatarURL()
-            },
-            timestamp: new Date()
-        };
-
-        message.channel.send({ embeds: [infoEmbed] });
-    }
-
-    async function handleJoinCommand(message, client) {
-        if (!message.member.voice.channel) {
-            return message.channel.send({
-                embeds: [{
-                    color: 0xff0000,
-                    title: "لست في روم صوتي",
-                    description: "يجب أن تكون في روم صوتي أولاً حتى أتمكن من الانضمام إليك!",
-                    thumbnail: {
-                        url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
-                    }
-                }]
+        if (upcomingSongs.length > 0) {
+            const upcomingList = upcomingSongs.map((song, index) => 
+                `${index + 1}. **${song.name}** - \`${song.formattedDuration}\``
+            ).join('\n');
+            
+            embed.fields.push({
+                name: "القائمة القادمة",
+                value: upcomingList + (queue.songs.length > 6 ? `\n...و ${queue.songs.length - 6} أغنية أخرى` : ''),
+                inline: false
             });
         }
 
-        try {
-            const { joinVoiceChannel } = require('@discordjs/voice');
-            const voiceChannel = message.member.voice.channel;
-            
-            joinVoiceChannel({
-                channelId: voiceChannel.id,
-                guildId: message.guild.id,
-                adapterCreator: message.guild.voiceAdapterCreator
-            });
-            
-            message.channel.send({
-                embeds: [{
-                    color: 0x00ff00,
-                    title: "انضممت للروم الصوتي",
-                    description: `تم الانضمام إلى **${voiceChannel.name}** بنجاح!\n\nAnxiety جاهز للتشغيل!\nمع حماية كاملة من أخطاء YouTube`,
-                    thumbnail: {
-                        url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
-                    },
-                    footer: { text: "استخدم ش [اسم الأغنية] لبدء التشغيل" }
-                }]
-            });
-        } catch (error) {
-            console.error("خطأ في الانضمام للروم:", error);
-            message.channel.send({
-                embeds: [{
-                    color: 0xff0000,
-                    title: "فشل في الانضمام",
-                    description: "لا أستطيع الانضمام لهذا الروم الصوتي.\n\nتأكد من أن لدي صلاحيات الدخول وال
-
-    // تسجيل دخول البوت
-    client.login(config.token).catch(error => {
-        console.error(`❌ فشل في تسجيل دخول البوت: ${config.name || 'Unknown'}`);
-        console.error("تفاصيل الخطأ:", error.message);
-        if (error.code === 'TOKEN_INVALID') {
-            console.error('🔑 التوكن غير صحيح! تأكد من التوكن في متغيرات البيئة');
-        }
-    });
-
-    return { client, distube };
+        message.channel.send({ embeds: [embed] });
+    } catch (error) {
+        message.channel.send("حدث خطأ أثناء عرض قائمة التشغيل.");
+    }
 }
 
-// تشغيل البوتات
-console.log('🚀 بدء تشغيل النظام المتقدم...');
+async function handleHelpCommand(message, client) {
+    const helpEmbed = {
+        color: 0x8B5A8C,
+        title: "Anxiety - دليل الأوامر الكامل",
+        description: "بوت موسيقي متطور مع حماية كاملة من خطأ 429",
+        fields: [
+            {
+                name: "تشغيل الموسيقى",
+                value: "**ش [اسم الأغنية]** - الأمر الرئيسي\n**شغل [اسم الأغنية]** - تشغيل أغنية\n**play [song name]** - تشغيل بالإنجليزية",
+                inline: false
+            },
+            {
+                name: "التحكم في التشغيل",
+                value: "**وقف** / **pause** - إيقاف مؤقت\n**كمل** / **resume** - استكمال التشغيل\n**س** / **skip** - تخطي الأغنية\n**ق** / **stop** - إيقاف كامل",
+                inline: false
+            },
+            {
+                name: "التحكم المتقدم",
+                value: "**صوت [0-200]** - تغيير مستوى الصوت\n**تكرار** - تبديل أنماط التكرار\n**خلط** - خلط القائمة عشوائياً",
+                inline: false
+            },
+            {
+                name: "المعلومات",
+                value: "**قائمة** - عرض قائمة التشغيل\n**معلومات** - معلومات البوت\n**انضم** - الانضمام للروم الصوتي",
+                inline: false
+            }
+        ],
+        thumbnail: {
+            url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
+        },
+        footer: {
+            text: "Anxiety Music Bot - تشغيل 24/7",
+            icon_url: client.user?.displayAvatarURL()
+        },
+        timestamp: new Date()
+    };
 
-if (bots && bots.length > 0) {
-    console.log(`🤖 بدء تشغيل ${bots.length} بوت(ات) متقدم...`);
-    bots.forEach((config, index) => {
-        console.log(`\n--- تشغيل البوت المتقدم ${index + 1}: ${config.name} ---`);
-        createBot(config);
-    });
-    console.log('\n🎉 تم بدء تشغيل جميع البوتات المتقدمة بنجاح!');
-} else {
-    console.error("❌ لم يتم العثور على أي بوتات في الإعدادات");
-    process.exit(1);
+    message.channel.send({ embeds: [helpEmbed] });
 }
+
+async function handleInfoCommand(message, client) {
+    const uptime = process.uptime();
+    const uptimeString = `${Math.floor(uptime / 3600)}س ${Math.floor((uptime % 3600) / 60)}د`;
+    const memoryUsage = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+
+    const infoEmbed = {
+        color: 0x8B5A8C,
+        title: "معلومات البوت Anxiety",
+        description: "بوت موسيقي متطور مع حماية شاملة من أخطاء YouTube",
+        fields: [
+            { name: "اسم البوت", value: client.user.username, inline: true },
+            { name: "مدة التشغيل", value: uptimeString, inline: true },
+            { name: "الخوادم", value: client.guilds.cache.size.toString(), inline: true },
+            { name: "البنغ", value: `${Math.round(client.ws.ping)}ms`, inline: true },
+            { name: "استهلاك الذاكرة", value: `${memoryUsage} MB`, inline: true },
+            { name: "قائمة انتظار YouTube", value: `${youtubeManager.requestQueue.length} طلب`, inline: true },
+            { name: "طلبات اليوم", value: `${youtubeManager.requestHistory.length}/200`, inline: true },
+            { name: "YouTube Cookies", value: youtubeManager.cookies ? "متوفرة" : "غير متوفرة", inline: true }
+        ],
+        thumbnail: {
+            url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
+        },
+        footer: {
+            text: "Anxiety - تم تطويره بتقنيات متقدمة",
+            icon_url: client.user?.displayAvatarURL()
+        },
+        timestamp: new Date()
+    };
+
+    message.channel.send({ embeds: [infoEmbed] });
+}
+
+async function handleJoinCommand(message, client) {
+    if (!message.member.voice.channel) {
+        return message.channel.send({
+            embeds: [{
+                color: 0xff0000,
+                title: "لست في روم صوتي",
+                description: "يجب أن تكون في روم صوتي أولاً حتى أتمكن من الانضمام إليك!",
+                thumbnail: {
+                    url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
+                }
+            }]
+        });
+    }
+
+    try {
+        const { joinVoiceChannel } = require('@discordjs/voice');
+        const voiceChannel = message.member.voice.channel;
+        
+        joinVoiceChannel({
+            channelId: voiceChannel.id,
+            guildId: message.guild.id,
+            adapterCreator: message.guild.voiceAdapterCreator
+        });
+        
+        message.channel.send({
+            embeds: [{
+                color: 0x00ff00,
+                title: "انضممت للروم الصوتي",
+                description: `تم الانضمام إلى **${voiceChannel.name}** بنجاح!\n\nAnxiety جاهز للتشغيل!\nمع حماية كاملة من أخطاء YouTube`,
+                thumbnail: {
+                    url: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=300&h=300&fit=crop&crop=center"
+                },
+                footer: { text: "استخدم ش [اسم الأغنية] لبدء التشغيل" }
+            }]
+        });
+    } catch (error) {
+        console.error("خطأ في الانضمام للروم:", error);
+        message.channel.send({
+            embeds: [{
+                color: 0xff0000,
+                title: "فشل في الانضمام",
+                description: "لا أستطيع الانضمام لهذا الروم الصوتي.\n\nتأكد من أن لدي صلاحيات الدخول والتحدث في الروم.",
+                thumbnail: {
+                    url: "

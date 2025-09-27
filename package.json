@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "discord.js": "14.13.0",
-    "distube": "4.0.4",
+    "distube": "github:distubejs/distube", 
     "ytdl-core": "4.11.4",
     "@discordjs/voice": "0.15.0",
     "@discordjs/opus": "0.8.0",

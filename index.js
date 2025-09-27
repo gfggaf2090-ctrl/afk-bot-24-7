@@ -1,4 +1,34 @@
-// إعداد HTTP Server للاستضافة على Render
+// إعدادات DisTube المتقدمة مع حماية 24/7 وعدم مغادرة الروم
+    const distubeOptions = {
+        emitNewSongOnly: true,
+        savePreviousSongs: false,
+        nsfw: false,
+        searchSongs: 1,
+        emptyCooldown: 0, // لا توقيت للخروج عند فراغ الروم
+        leaveOnEmpty: false, // لا يغادر عند فراغ الروم
+        leaveOnFinish: false, // لا يغادر عند انتهاء القائمة
+        leaveOnStop: false, // لا يغادر عند الإيقاف
+        searchCooldown: 60,
+        ffmpeg: {
+            path: process.env.FFMPEG_PATH || 'ffmpeg'
+        },
+        ytdlOptions: {
+            highWaterMark: 1024 * 1024 * 64, // 64MB buffer
+            requestOptions: {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1'
+                }
+            },
+            // إضافة cookies إذا كانت متوفرة
+            ...(youtubeManager.cookies && { 
+                requestOptions: { 
+                    headers: { 
+                        cookie: youtubeManager.// إعداد HTTP Server للاستضافة على Render
 const http = require('http');
 const PORT = process.env.PORT || 3000;
 
@@ -359,6 +389,26 @@ function createBot(config) {
         else if (["ق", "stop", "إيقاف", "st", "توقف"].includes(content)) {
             await handleStopCommand(message, distube);
         }
+        // أوامر الإيقاف المؤقت والاستكمال
+        else if (["وقف", "pause", "إيقاف_مؤقت", "pa"].includes(content)) {
+            await handlePauseCommand(message, distube);
+        }
+        else if (["كمل", "resume", "استكمال", "r", "استمرار"].includes(content)) {
+            await handleResumeCommand(message, distube);
+        }
+        // أوامر التحكم في الصوت
+        else if (content.startsWith("صوت ") || content.startsWith("volume ") || content.startsWith("vol ")) {
+            const volume = parseInt(originalContent.replace(/^(صوت|volume|vol)\s+/i, "").trim());
+            await handleVolumeCommand(message, volume, distube);
+        }
+        // أوامر التكرار
+        else if (["تكرار", "loop", "كرر", "repeat"].includes(content)) {
+            await handleLoopCommand(message, distube);
+        }
+        // أوامر الخلط
+        else if (["خلط", "shuffle", "عشوائي", "random"].includes(content)) {
+            await handleShuffleCommand(message, distube);
+        }
         // أوامر عرض القائمة
         else if (["قائمة", "queue", "q", "list", "القائمة", "ل"].includes(content)) {
             await handleQueueCommand(message, distube);
@@ -526,6 +576,152 @@ function createBot(config) {
         }
     }
 
+    // دالة الإيقاف المؤقت
+    async function handlePauseCommand(message, distube) {
+        try {
+            const queue = distube.getQueue(message.guild.id);
+            if (!queue) {
+                return message.channel.send("⚠️ لا توجد موسيقى قيد التشغيل.");
+            }
+
+            if (queue.paused) {
+                return message.channel.send("⚠️ الموسيقى متوقفة مؤقتاً بالفعل.");
+            }
+
+            await distube.pause(message.guild.id);
+            
+            message.channel.send({
+                embeds: [{
+                    color: 0xffa500,
+                    title: "⏸️ تم إيقاف الموسيقى مؤقتاً",
+                    description: `تم إيقاف: **${queue.songs[0].name}** مؤقتاً\n\n🎶 **استخدم أمر "كمل" للاستكمال**`,
+                    footer: { text: "البوت لا يزال في الروم - جاهز للاستكمال" }
+                }]
+            });
+        } catch (error) {
+            console.error("خطأ في إيقاف الموسيقى مؤقتاً:", error);
+            message.channel.send("❌ لا يمكن إيقاف الموسيقى مؤقتاً حالياً.");
+        }
+    }
+
+    // دالة استكمال التشغيل
+    async function handleResumeCommand(message, distube) {
+        try {
+            const queue = distube.getQueue(message.guild.id);
+            if (!queue) {
+                return message.channel.send("⚠️ لا توجد موسيقى قيد التشغيل.");
+            }
+
+            if (!queue.paused) {
+                return message.channel.send("⚠️ الموسيقى تعمل بالفعل.");
+            }
+
+            await distube.resume(message.guild.id);
+            
+            message.channel.send({
+                embeds: [{
+                    color: 0x00ff00,
+                    title: "▶️ تم استكمال التشغيل",
+                    description: `تم استكمال: **${queue.songs[0].name}**\n\n🎶 **التشغيل مستمر الآن!**`,
+                    footer: { text: "البوت نشط - تشغيل 24/7" }
+                }]
+            });
+        } catch (error) {
+            console.error("خطأ في استكمال الموسيقى:", error);
+            message.channel.send("❌ لا يمكن استكمال الموسيقى حالياً.");
+        }
+    }
+
+    // دالة التحكم في الصوت
+    async function handleVolumeCommand(message, volume, distube) {
+        try {
+            const queue = distube.getQueue(message.guild.id);
+            if (!queue) {
+                return message.channel.send("⚠️ لا توجد موسيقى قيد التشغيل.");
+            }
+
+            if (isNaN(volume) || volume < 0 || volume > 200) {
+                return message.channel.send("⚠️ يجب أن يكون مستوى الصوت بين 0 و 200\nمثال: صوت 50");
+            }
+
+            const oldVolume = queue.volume;
+            await distube.setVolume(message.guild.id, volume);
+            
+            message.channel.send({
+                embeds: [{
+                    color: 0x00ff00,
+                    title: "🔊 تم تغيير مستوى الصوت",
+                    description: `تم تغيير مستوى الصوت من **${oldVolume}%** إلى **${volume}%**`,
+                    fields: [
+                        { name: "🎵 الأغنية الحالية", value: queue.songs[0].name, inline: true },
+                        { name: "📊 مستوى الصوت الجديد", value: `${volume}%`, inline: true }
+                    ],
+                    footer: { text: "يمكنك استخدام 0-200 لتحديد مستوى الصوت" }
+                }]
+            });
+        } catch (error) {
+            console.error("خطأ في تغيير الصوت:", error);
+            message.channel.send("❌ لا يمكن تغيير مستوى الصوت حالياً.");
+        }
+    }
+
+    // دالة التكرار
+    async function handleLoopCommand(message, distube) {
+        try {
+            const queue = distube.getQueue(message.guild.id);
+            if (!queue) {
+                return message.channel.send("⚠️ لا توجد موسيقى قيد التشغيل.");
+            }
+
+            let mode = distube.setRepeatMode(message.guild.id);
+            const modes = {
+                0: { name: "إيقاف التكرار", emoji: "🔕", color: 0xff0000 },
+                1: { name: "تكرار الأغنية الحالية", emoji: "🔂", color: 0x00ff00 },
+                2: { name: "تكرار القائمة كاملة", emoji: "🔁", color: 0x0099ff }
+            };
+
+            message.channel.send({
+                embeds: [{
+                    color: modes[mode].color,
+                    title: `${modes[mode].emoji} تم تغيير نمط التكرار`,
+                    description: `**النمط الجديد:** ${modes[mode].name}`,
+                    fields: [
+                        { name: "🎵 الأغنية الحالية", value: queue.songs[0].name, inline: true },
+                        { name: "📋 الأغاني في القائمة", value: `${queue.songs.length}`, inline: true }
+                    ],
+                    footer: { text: "استخدم أمر 'تكرار' مرة أخرى لتغيير النمط" }
+                }]
+            });
+        } catch (error) {
+            console.error("خطأ في تغيير نمط التكرار:", error);
+            message.channel.send("❌ لا يمكن تغيير نمط التكرار حالياً.");
+        }
+    }
+
+    // دالة خلط القائمة
+    async function handleShuffleCommand(message, distube) {
+        try {
+            const queue = distube.getQueue(message.guild.id);
+            if (!queue || queue.songs.length <= 2) {
+                return message.channel.send("⚠️ يجب أن تحتوي القائمة على أكثر من أغنيتين للخلط.");
+            }
+
+            await distube.shuffle(message.guild.id);
+            
+            message.channel.send({
+                embeds: [{
+                    color: 0xff00ff,
+                    title: "🔀 تم خلط قائمة التشغيل",
+                    description: `تم خلط **${queue.songs.length}** أغنية بترتيب عشوائي`,
+                    fields: [
+                        { name: "🎵 الأغنية الحالية", value: queue.songs[0].name, inline: true },
+                        { name: "⏭️ الأغنية التالية", value: queue.songs[1]?.name || "لا توجد", inline: true }
+                    ],
+                    footer: { text: "تم إعادة ترتيب القائمة بشكل عشوائي" }
+                }]
+            });
+        } catch (error) {
+    // دالة الإيقاف المحسنة (بدون مغادرة الروم)
     async function handleStopCommand(message, distube) {
         try {
             const queue = distube.getQueue(message.guild.id);
@@ -533,14 +729,19 @@ function createBot(config) {
                 return message.channel.send("⚠️ لا توجد موسيقى قيد التشغيل.");
             }
 
+            // إيقاف الموسيقى دون مغادرة الروم
             await distube.stop(message.guild.id);
             
             message.channel.send({
                 embeds: [{
                     color: 0xff0000,
                     title: "⏹️ تم إيقاف الموسيقى",
-                    description: "تم إيقاف جميع الأغاني وإفراغ القائمة\n\n🎶 **سأبقى في الروم منتظراً أغاني جديدة!**",
-                    footer: { text: "استخدم ش [اسم الأغنية] لبدء التشغيل" }
+                    description: "تم إيقاف جميع الأغاني وإفراغ القائمة\n\n🎶 **البوت سيبقى في الروم 24/7** 🎵\n⚡ **جاهز لتشغيل أغاني جديدة فوراً!**",
+                    fields: [
+                        { name: "🎮 أوامر التحكم", value: "**ش** - تشغيل | **وقف** - إيقاف مؤقت | **كمل** - استكمال", inline: false },
+                        { name: "🔧 أوامر متقدمة", value: "**صوت [0-200]** | **تكرار** | **خلط** | **قائمة**", inline: false }
+                    ],
+                    footer: { text: "البوت نشط 24/7 - لن يغادر الروم أبداً!" }
                 }]
             });
         } catch (error) {
@@ -603,8 +804,8 @@ function createBot(config) {
     async function handleHelpCommand(message, client) {
         const helpEmbed = {
             color: 0x00ff00,
-            title: "🎵 البوت الموسيقي المتقدم - الأوامر",
-            description: "بوت متطور مع حماية كاملة من خطأ 429 ونظام قوائل انتظار ذكي",
+            title: "🎵 البوت الموسيقي المتقدم - دليل الأوامر الكامل",
+            description: "بوت متطور مع حماية كاملة من خطأ 429 ونظام تشغيل 24/7",
             fields: [
                 {
                     name: "🎶 تشغيل الموسيقى",
@@ -613,7 +814,12 @@ function createBot(config) {
                 },
                 {
                     name: "⏯️ التحكم في التشغيل",
-                    value: "**س** / **سكب** / **skip** - تخطي الأغنية\n**ق** / **stop** - إيقاف الموسيقى وإفراغ القائمة",
+                    value: "**وقف** / **pause** - إيقاف مؤقت\n**كمل** / **resume** - استكمال التشغيل\n**س** / **skip** - تخطي الأغنية\n**ق** / **stop** - إيقاف كامل (البوت يبقى)",
+                    inline: false
+                },
+                {
+                    name: "🔊 التحكم في الصوت والتكرار",
+                    value: "**صوت [0-200]** / **volume [0-200]** - تغيير مستوى الصوت\n**تكرار** / **loop** - تبديل أنماط التكرار\n**خلط** / **shuffle** - خلط القائمة عشوائياً",
                     inline: false
                 },
                 {
@@ -623,17 +829,17 @@ function createBot(config) {
                 },
                 {
                     name: "🛡️ ميزات النظام المتقدم",
-                    value: "• **حماية كاملة من خطأ 429**\n• قائمة انتظار ذكية\n• نظام Proxies و Cookies\n• إحصائيات مفصلة\n• تشغيل 24/7 بدون انقطاع",
+                    value: "• **حماية كاملة من خطأ 429** ✅\n• **تشغيل 24/7 بدون انقطاع** 🔄\n• **قائمة انتظار ذكية** 📊\n• **نظام Proxies و Cookies** 🌐\n• **لن يغادر الروم أبداً** 🎵\n• **إحصائيات مفصلة** 📈",
                     inline: false
                 },
                 {
-                    name: "💡 أمثلة على البحث الأمثل",
-                    value: "• ش فيروز زهرة المدائن\n• ش عمرو دياب تملي معاك\n• ش adele hello\n• ش محمد عبده أبعد عني",
+                    name: "💡 أمثلة على الاستخدام",
+                    value: "• **ش** فيروز زهرة المدائن\n• **صوت 80** - رفع الصوت لـ 80%\n• **وقف** - إيقاف مؤقت\n• **كمل** - استكمال التشغيل\n• **تكرار** - تكرار الأغنية\n• **خلط** - خلط القائمة",
                     inline: false
                 }
             ],
             footer: {
-                text: "بوت متطور مع تقنيات حديثة لضمان الاستمرارية ❤️",
+                text: "بوت متطور بتقنيات حديثة | 24/7 تشغيل مضمون ❤️",
                 icon_url: client.user?.displayAvatarURL()
             },
             timestamp: new Date()
@@ -813,34 +1019,45 @@ function createBot(config) {
             }).catch(console.error);
         })
         .on("empty", queue => {
+            // البوت لن يغادر الروم عند فراغه - نظام 24/7
+            console.log(`🔄 الروم فارغ في ${queue.textChannel.guild.name} - البقاء 24/7 نشط`);
             queue.textChannel?.send({
                 embeds: [{
                     color: 0x00ff00,
-                    title: "🎵 الروم فارغ لكن النظام نشط!",
-                    description: "جميع الأعضاء غادروا الروم الصوتي، لكن البوت المتقدم سيبقى هنا منتظراً عودتكم!\n\n**🛡️ نظام الحماية من 429 نشط دائماً**",
-                    footer: { text: "استخدم ش [اسم الأغنية] عند العودة!" }
+                    title: "🎵 الروم فارغ - البوت نشط 24/7!",
+                    description: "جميع الأعضاء غادروا الروم الصوتي، لكن البوت سيبقى هنا 24/7!\n\n**🛡️ نظام الحماية من 429 نشط دائماً**\n**🔄 جاهز لتشغيل الأغاني فوراً عند عودتكم**",
+                    fields: [
+                        { name: "🎮 أوامر سريعة", value: "**ش [اسم الأغنية]** - تشغيل\n**انضم** - للتأكد من الاتصال", inline: true },
+                        { name: "⚡ حالة النظام", value: "نشط ومستعد\nقائمة انتظار: جاهزة\nالحماية: مفعلة", inline: true }
+                    ],
+                    footer: { text: "بوت ذكي - لا يغادر أبداً | 24/7" }
                 }]
             }).catch(console.error);
         })
         .on("finish", queue => {
             // تحديث حالة البوت عند انتهاء القائمة مع Streaming
-            client.user.setActivity('ش [اسم الأغنية] | نظام متقدم', { 
+            client.user.setActivity('ش [اسم الأغنية] | 24/7 نشط', { 
                 type: ActivityType.Streaming,
                 url: 'https://www.twitch.tv/discord'
             });
 
+            console.log(`✅ انتهت قائمة التشغيل في ${queue.textChannel.guild.name} - البوت يبقى 24/7`);
             queue.textChannel?.send({
                 embeds: [{
                     color: 0x00ff00,
                     title: "✅ انتهت قائمة التشغيل",
-                    description: "تم الانتهاء من تشغيل جميع الأغاني!\n\n🎶 **البوت المتقدم سيبقى في الروم منتظراً أغاني جديدة**\n🛡️ **نظام الحماية من 429 نشط دائماً**",
-                    footer: { text: "استخدم ش [اسم الأغنية] لإضافة المزيد!" }
+                    description: "تم الانتهاء من تشغيل جميع الأغاني!\n\n🎶 **البوت سيبقى في الروم 24/7** 🔄\n🛡️ **نظام الحماية من 429 نشط دائماً**\n⚡ **جاهز لتشغيل أغاني جديدة فوراً!**",
+                    fields: [
+                        { name: "🎮 بدء التشغيل السريع", value: "**ش** فيروز\n**ش** عمرو دياب\n**ش** أم كلثوم", inline: true },
+                        { name: "📊 إحصائيات اليوم", value: `طلبات: ${youtubeManager.requestHistory.length}/200\nقائمة انتظار: ${youtubeManager.requestQueue.length}`, inline: true }
+                    ],
+                    footer: { text: "بوت ذكي يعمل 24/7 بدون توقف!" }
                 }]
             }).catch(console.error);
         })
         .on("disconnect", queue => {
             // تحديث حالة البوت عند قطع الاتصال مع Streaming
-            client.user.setActivity('منقطع | ش [اسم الأغنية] للعودة', { 
+            client.user.setActivity('aziz', { 
                 type: ActivityType.Streaming,
                 url: 'https://www.twitch.tv/discord'
             });
@@ -907,7 +1124,7 @@ function createBot(config) {
         console.log(`🌐 Proxies متاحة: ${youtubeManager.proxies.length}`);
 
         // تحديث حالة البوت مع Streaming
-        client.user.setActivity('ش [اسم الأغنية] | نظام متقدم', { 
+        client.user.setActivity('Aziz', { 
             type: ActivityType.Streaming,
             url: 'https://www.twitch.tv/discord'
         });

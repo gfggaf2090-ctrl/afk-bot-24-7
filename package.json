@@ -1,46 +1,87 @@
 {
-  "name": "arabic-discord-music-bot",
+  "name": "lavamusic-enhanced",
   "version": "2.0.0",
-  "description": "Arabic Discord Music Bot with DisTube for Render deployment",
+  "description": "Advanced Discord Music Bot with Lavalink and 429 Protection",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
-  },
-  "dependencies": {
-    "discord.js": "^14.14.1",
-    "distube": "^4.2.0",
-    "@distube/ytdl-core": "^4.13.5",
-    "ytdl-core": "^4.11.5",
-    "@ffmpeg-installer/ffmpeg": "^1.1.0",
-    "ffmpeg-static": "^5.2.0",
-    "@discordjs/voice": "^0.16.1",
-    "@discordjs/opus": "^0.9.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.2"
-  },
-  "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=8.0.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/your-username/arabic-discord-music-bot.git"
+    "dev": "nodemon index.js",
+    "build": "tsc",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "deploy:commands": "node scripts/deploy-commands.js",
+    "docker:build": "docker build -t lavamusic-enhanced .",
+    "docker:run": "docker run -d --name lavamusic-enhanced -p 3000:3000 lavamusic-enhanced"
   },
   "keywords": [
     "discord",
     "music",
     "bot",
-    "arabic",
-    "distube",
+    "lavalink",
+    "discord.js",
+    "nodejs",
     "youtube",
-    "render"
+    "spotify",
+    "429-protection",
+    "advanced"
   ],
   "author": "Your Name",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/your-username/arabic-discord-music-bot/issues"
+  "license": "GPL-3.0",
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "lavalink-client": "^2.4.0",
+    "@discordjs/voice": "^0.18.0",
+    "@discordjs/opus": "^0.9.0",
+    "prisma": "^5.22.0",
+    "@prisma/client": "^5.22.0",
+    "dotenv": "^16.4.5",
+    "i18next": "^23.16.4",
+    "i18next-fs-backend": "^2.3.2",
+    "express": "^4.21.1",
+    "cors": "^2.8.5",
+    "helmet": "^8.0.0",
+    "compression": "^1.7.5",
+    "winston": "^3.15.0",
+    "node-cron": "^3.0.3",
+    "lodash": "^4.17.21",
+    "moment": "^2.30.1",
+    "axios": "^1.7.9",
+    "ytdl-core": "^4.11.5",
+    "spotify-web-api-node": "^5.0.2",
+    "soundcloud-scraper": "^5.0.3"
   },
-  "homepage": "https://github.com/your-username/arabic-discord-music-bot#readme"
+  "devDependencies": {
+    "@types/node": "^22.8.7",
+    "@types/express": "^5.0.0",
+    "@types/cors": "^2.8.17",
+    "@types/compression": "^1.7.5",
+    "@types/lodash": "^4.17.13",
+    "typescript": "^5.6.3",
+    "nodemon": "^3.1.7",
+    "eslint": "^9.14.0",
+    "@typescript-eslint/eslint-plugin": "^8.13.0",
+    "@typescript-eslint/parser": "^8.13.0",
+    "prettier": "^3.3.3",
+    "ts-node": "^10.9.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/lavamusic-enhanced.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/lavamusic-enhanced/issues"
+  },
+  "homepage": "https://github.com/yourusername/lavamusic-enhanced#readme",
+  "prisma": {
+    "schema": "prisma/schema.prisma"
+  }
 }

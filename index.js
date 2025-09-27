@@ -197,7 +197,7 @@ async function handleJoinCommand(message, client) {
                 color: 0x00ff00,
                 title: "✅ انضممت للروم الصوتي",
                 description: `تم الانضمام إلى **${voiceChannel.name}** بنجاح! 🎵\n\n**سأبقى هنا منتظراً الأوامر!** 🎶`,
-                footer: { text: "استخدم أمر 'ش' لتشغيل الموسيقى" }
+                                    footer: { text: "استخدم أمر 'aziz' لتشغيل الموسيقى" }
             }]
         });
     } catch (error) {
@@ -300,42 +300,53 @@ function createBot(config) {
         const content = message.content.trim().toLowerCase();
         const originalContent = message.content.trim();
 
-        // أمر "ش" → البحث وتشغيل الأغنية
+        // أمر "aziz" → البحث وتشغيل الأغنية
         if (content.startsWith("ش ")) {
-            await handlePlayCommand(message, originalContent.replace(/^ش\s+/, "").trim(), distube);
+            await handlePlayCommand(message, originalContent.replace(/^aziz\s+/, "").trim(), distube);
         }
-        // أمر "ش" بدون كلام → رسالة تنبيه
+        // أمر "aziz" بدون كلام → رسالة تنبيه
         else if (content === "ش") {
             message.channel.send("⚠️ اكتب اسم الأغنية بعد الأمر!\nمثال: ش أم كلثوم");
         }
-        // أمر التشغيل بالبحث
-        else if (content.startsWith("شغل ") || content.startsWith("play ")) {
-            const query = originalContent.replace(/^(شغل|play)\s+/i, "").trim();
+        // أمر التشغيل بالبحث (متعدد)
+        else if (content.startsWith("شغل ") || content.startsWith("play ") || content.startsWith("p ")) {
+            const query = originalContent.replace(/^(شغل|play|p)\s+/i, "").trim();
             await handlePlayCommand(message, query, distube);
         }
-        // أمر التخطي
-        else if (["س", "سكب", "skip", "next"].includes(content)) {
+        // أوامر التخطي (متعددة)
+        else if (["س", "سكب", "skip", "next", "s", "sk"].includes(content)) {
             await handleSkipCommand(message, distube);
         }
-        // أمر الإيقاف
-        else if (["ق", "stop", "إيقاف"].includes(content)) {
+        // أوامر الإيقاف (متعددة)
+        else if (["ق", "stop", "إيقاف", "st", "توقف"].includes(content)) {
             await handleStopCommand(message, distube);
         }
-        // أمر عرض القائمة
-        else if (["قائمة", "queue", "q", "list"].includes(content)) {
+        // أوامر عرض القائمة (متعددة)
+        else if (["قائمة", "queue", "q", "list", "القائمة", "ل"].includes(content)) {
             await handleQueueCommand(message, distube);
         }
-        // أمر المساعدة
-        else if (["مساعدة", "help", "commands", "أوامر"].includes(content)) {
+        // أوامر المساعدة (متعددة)
+        else if (["مساعدة", "help", "commands", "أوامر", "h", "cmd"].includes(content)) {
             await handleHelpCommand(message, client);
         }
-        // أمر معلومات البوت
-        else if (["معلومات", "info", "about"].includes(content)) {
+        // أوامر معلومات البوت (متعددة)
+        else if (["معلومات", "info", "about", "i", "معلومات_البوت"].includes(content)) {
             await handleInfoCommand(message, client);
         }
-        // أمر الانضمام للروم
-        else if (["انضم", "join", "تعال"].includes(content)) {
+        // أوامر الانضمام للروم (متعددة)
+        else if (["انضم", "join", "تعال", "j", "ادخل"].includes(content)) {
             await handleJoinCommand(message, client);
+        }
+        // أمر اختبار استجابة البوت
+        else if (["تست", "test", "ping", "بوت", "موجود"].includes(content)) {
+            message.channel.send({
+                embeds: [{
+                    color: 0x00ff00,
+                    title: "✅ البوت يعمل بشكل طبيعي!",
+                    description: `مرحباً ${message.author}!\n\n🎵 **أوامر التشغيل:**\n• \`aziz [اسم الأغنية]\` - الأمر الرئيسي\n• \`شغل [اسم الأغنية]\` - أمر بديل\n• \`play [اسم الأغنية]\` - أمر بديل\n\n💡 **مثال:** aziz أم كلثوم`,
+                    footer: { text: `البنغ: ${Math.round(client.ws.ping)}ms` }
+                }]
+            });
         }
     });
 
@@ -574,7 +585,7 @@ function createBot(config) {
             fields: [
                 {
                     name: "🎶 تشغيل الموسيقى",
-                    value: "**ش [اسم الأغنية]** - البحث وتشغيل أغنية\n**شغل [اسم الأغنية]** - تشغيل أغنية\n**play [song name]** - تشغيل أغنية",
+                    value: "**aziz [اسم الأغنية]** - البحث وتشغيل أغنية\n**شغل [اسم الأغنية]** - تشغيل أغنية\n**play [song name]** - تشغيل أغنية",
                     inline: false
                 },
                 {
@@ -589,7 +600,7 @@ function createBot(config) {
                 },
                 {
                     name: "💡 أمثلة على البحث الأمثل",
-                    value: "• ش فيروز\n• ش عمرو دياب\n• شغل adele hello\n• ش محمد عبده",
+                    value: "• aziz فيروز\n• aziz عمرو دياب\n• aziz adele hello\n• aziz محمد عبده",
                     inline: false
                 },
                 {
@@ -806,7 +817,7 @@ function createBot(config) {
         console.log(`🌐 البوت متصل بـ ${client.guilds.cache.size} خادم`);
 
         // تحديث حالة البوت مع Streaming
-        client.user.setActivity('ش [اسم الأغنية] | مساعدة للأوامر', { 
+        client.user.setActivity('Aziz', { 
             type: ActivityType.Streaming,
             url: 'https://www.twitch.tv/discord'
         });

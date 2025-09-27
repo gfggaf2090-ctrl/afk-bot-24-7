@@ -104,7 +104,7 @@ function createBot(config) {
         }
 
         if (!query) {
-            return message.channel.send("⚠️ اكتب اسم الأغنية بعد الأمر!\nمثال: ش أم كلثوم");
+            return message.channel.send("⚠️ اكتب اسم الأغنية بعد الأمر!\nمثال: aziz أم كلثوم");
         }
 
         const loadingMsg = await message.channel.send(`🔍 جاري البحث عن: **${query}**...`);
@@ -254,7 +254,7 @@ function createBot(config) {
                                 value: "طبيعية - لن يغادر الروم",
                                 inline: true
                             }],
-                            footer: { text: "استضافة Render | سيعود تلقائياً" }
+                            footer: { text: "  | سيعود تلقائياً" }
                         }]
                     }).catch(console.error);
                 }
@@ -321,10 +321,10 @@ setInterval(() => {
 // تحسين keep-alive للـ free tier
 if (process.env.NODE_ENV === 'production') {
     const keepAlive = () => {
-        setInterval(() => {
+        const pingInterval = setInterval(() => {
             const currentHour = new Date().getHours();
             // تقليل pings في أوقات الذروة
-            const interval = (currentHour >= 8 && currentHour <= 22) ? 28 : 25;
+            const intervalTime = (currentHour >= 8 && currentHour <= 22) ? 28 : 25;
             
             http.get(`http://localhost:${PORT}`, (res) => {
                 const status = res.statusCode === 200 ? "✅" : "⚠️";
@@ -332,9 +332,13 @@ if (process.env.NODE_ENV === 'production') {
             }).on('error', (err) => {
                 console.log('🔴 Keep-alive failed:', err.message);
             });
-        }, interval * 60 * 1000);
+        }, 25 * 60 * 1000); // 25 دقيقة ثابتة
+        
+        return pingInterval;
     };
     
-    setTimeout(keepAlive, 30000);
-    console.log('🔄 Render keep-alive system activated');
+    setTimeout(() => {
+        keepAlive();
+        console.log('🔄 Render keep-alive system activated');
+    }, 30000);
 }

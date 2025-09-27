@@ -22,83 +22,6 @@ for (const [packageName, version] of Object.entries(requiredPackages)) {
     try {
         require.resolve(packageName);
         console.log(`✅ ${packageName} موجود`);
-    }
-
-    // دالة الانضمام للروم الصوتي
-    async function handleJoinCommand(message, client) {
-        if (!message.member.voice.channel) {
-            return message.channel.send({
-                embeds: [{
-                    color: 0xff0000,
-                    title: "⚠️ لست في روم صوتي",
-                    description: "يجب أن تكون في روم صوتي أولاً حتى أتمكن من الانضمام إليك!"
-                }]
-            });
-        }
-
-        try {
-            const { joinVoiceChannel } = require('@discordjs/voice');
-            const voiceChannel = message.member.voice.channel;
-            
-            joinVoiceChannel({
-                channelId: voiceChannel.id,
-                guildId: message.guild.id,
-                adapterCreator: message.guild.voiceAdapterCreator
-            });
-            
-            message.channel.send({
-                embeds: [{
-                    color: 0x00ff00,
-                    title: "✅ انضممت للروم الصوتي",
-                    description: `تم الانضمام إلى **${voiceChannel.name}** بنجاح! 🎵\n\n**سأبقى هنا منتظراً الأوامر!** 🎶`,
-                    footer: { text: "استخدم أمر 'ش' لتشغيل الموسيقى" }
-                }]
-            });
-        } catch (error) {
-            console.error("خطأ في الانضمام للروم:", error);
-            message.channel.send({
-                embeds: [{
-                    color: 0xff0000,
-                    title: "❌ فشل في الانضمام",
-                    description: "لا أستطيع الانضمام لهذا الروم الصوتي.\n\nتأكد من أن لدي صلاحيات الدخول والتحدث في الروم."
-                }]
-            });
-        }
-    }
-
-    // دالة تشغيل الروابط المباشرة (تتجنب خطأ 429)
-    async function handleDirectPlayCommand(message, url, distube) {
-        if (!message.member.voice.channel) {
-            return message.channel.send("⚠️ يجب أن تكون في روم صوتي أولاً!");
-        }
-
-        const loadingMsg = await message.channel.send(`🎵 جاري تشغيل الرابط المباشر...`);
-
-        try {
-            await distube.play(message.member.voice.channel, url, {
-                member: message.member,
-                textChannel: message.channel,
-                message,
-            });
-            await loadingMsg.delete().catch(() => {});
-        } catch (error) {
-            console.error("خطأ في تشغيل الرابط المباشر:", error.message);
-            await loadingMsg.edit({
-                embeds: [{
-                    color: 0xff0000,
-                    title: "❌ فشل في تشغيل الرابط",
-                    description: "لم أتمكن من تشغيل هذا الرابط.",
-                    fields: [
-                        {
-                            name: "الأسباب المحتملة",
-                            value: "• الفيديو محذوف أو خاص\n• الرابط غير صحيح\n• مشكلة مؤقتة مع YouTube",
-                            inline: false
-                        }
-                    ],
-                    footer: { text: "تأكد من أن الرابط يعمل في المتصفح" }
-                }]
-            });
-        }
     } catch (error) {
         console.log(`❌ ${packageName} مفقود`);
         missingPackages.push(packageName);
@@ -150,6 +73,8 @@ try {
 const fs = require("fs");
 
 // إنشاء خادم HTTP بسيط للحفاظ على الخدمة نشطة
+let bots = []; // تعريف المتغير مبكراً
+
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 
         'Content-Type': 'application/json',
@@ -221,7 +146,6 @@ try {
 }
 
 // قراءة إعدادات البوتات
-let bots;
 try {
     // للاستضافة على Render - استخدام متغيرات البيئة
     if (process.env.BOT_TOKEN) {
@@ -244,6 +168,83 @@ try {
 } catch (error) {
     console.error("❌ خطأ في قراءة إعدادات البوت:", error.message);
     process.exit(1);
+}
+
+// دالة الانضمام للروم الصوتي
+async function handleJoinCommand(message, client) {
+    if (!message.member.voice.channel) {
+        return message.channel.send({
+            embeds: [{
+                color: 0xff0000,
+                title: "⚠️ لست في روم صوتي",
+                description: "يجب أن تكون في روم صوتي أولاً حتى أتمكن من الانضمام إليك!"
+            }]
+        });
+    }
+
+    try {
+        const { joinVoiceChannel } = require('@discordjs/voice');
+        const voiceChannel = message.member.voice.channel;
+        
+        joinVoiceChannel({
+            channelId: voiceChannel.id,
+            guildId: message.guild.id,
+            adapterCreator: message.guild.voiceAdapterCreator
+        });
+        
+        message.channel.send({
+            embeds: [{
+                color: 0x00ff00,
+                title: "✅ انضممت للروم الصوتي",
+                description: `تم الانضمام إلى **${voiceChannel.name}** بنجاح! 🎵\n\n**سأبقى هنا منتظراً الأوامر!** 🎶`,
+                footer: { text: "استخدم أمر 'ش' لتشغيل الموسيقى" }
+            }]
+        });
+    } catch (error) {
+        console.error("خطأ في الانضمام للروم:", error);
+        message.channel.send({
+            embeds: [{
+                color: 0xff0000,
+                title: "❌ فشل في الانضمام",
+                description: "لا أستطيع الانضمام لهذا الروم الصوتي.\n\nتأكد من أن لدي صلاحيات الدخول والتحدث في الروم."
+            }]
+        });
+    }
+}
+
+// دالة تشغيل الروابط المباشرة
+async function handleDirectPlayCommand(message, url, distube) {
+    if (!message.member.voice.channel) {
+        return message.channel.send("⚠️ يجب أن تكون في روم صوتي أولاً!");
+    }
+
+    const loadingMsg = await message.channel.send(`🎵 جاري تشغيل الرابط المباشر...`);
+
+    try {
+        await distube.play(message.member.voice.channel, url, {
+            member: message.member,
+            textChannel: message.channel,
+            message,
+        });
+        await loadingMsg.delete().catch(() => {});
+    } catch (error) {
+        console.error("خطأ في تشغيل الرابط المباشر:", error.message);
+        await loadingMsg.edit({
+            embeds: [{
+                color: 0xff0000,
+                title: "❌ فشل في تشغيل الرابط",
+                description: "لم أتمكن من تشغيل هذا الرابط.",
+                fields: [
+                    {
+                        name: "الأسباب المحتملة",
+                        value: "• الفيديو محذوف أو خاص\n• الرابط غير صحيح\n• مشكلة مؤقتة مع YouTube",
+                        inline: false
+                    }
+                ],
+                footer: { text: "تأكد من أن الرابط يعمل في المتصفح" }
+            }]
+        });
+    }
 }
 
 function createBot(config) {
@@ -584,249 +585,3 @@ function createBot(config) {
                     inline: false
                 },
                 {
-                    name: "📋 المعلومات والقوائم",
-                    value: "**قائمة** / **queue** / **q** - عرض قائمة التشغيل\n**معلومات** / **info** - معلومات البوت\n**مساعدة** / **help** - عرض هذه الرسالة\n**انضم** / **join** - الانضمام للروم الصوتي",
-                    inline: false
-                },
-                {
-                    name: "💡 أمثلة على البحث الأمثل",
-                    value: "• ش فيروز\n• ش عمرو دياب\n• شغل adele hello\n• ش محمد عبده",
-                    inline: false
-                },
-                {
-                    name: "🔧 نصائح لتجنب الأخطاء",
-                    value: "• استخدم كلمات قصيرة وبسيطة\n• ابدأ باسم الفنان فقط\n• تجنب الكلمات الطويلة أو المعقدة\n• انتظر قليلاً بين الطلبات\n• **البوت لن يغادر الروم أبداً!** 🎵",
-                    inline: false
-                }
-            ],
-            footer: {
-                text: "تم تطويره بواسطة Aziz ❤️ | استمتع بالموسيقى! 🎵",
-                icon_url: client.user?.displayAvatarURL()
-            },
-            timestamp: new Date()
-        };
-
-        message.channel.send({ embeds: [helpEmbed] });
-    }
-
-    // دالة معلومات البوت
-    async function handleInfoCommand(message, client) {
-        const uptime = process.uptime();
-        const uptimeString = `${Math.floor(uptime / 3600)}س ${Math.floor((uptime % 3600) / 60)}د`;
-
-        const infoEmbed = {
-            color: 0x7289da,
-            title: "ℹ️ معلومات البوت",
-            fields: [
-                { name: "🤖 اسم البوت", value: client.user.username, inline: true },
-                { name: "🆔 معرف البوت", value: client.user.id, inline: true },
-                { name: "⏰ مدة التشغيل", value: uptimeString, inline: true },
-                { name: "🌐 الخوادم", value: client.guilds.cache.size.toString(), inline: true },
-                { name: "👥 المستخدمين", value: client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0).toString(), inline: true },
-                { name: "📶 البنغ", value: `${Math.round(client.ws.ping)}ms`, inline: true }
-            ],
-            footer: {
-                text: "تم تطويره بواسطة Aziz ❤️",
-                icon_url: client.user?.displayAvatarURL()
-            },
-            timestamp: new Date()
-        };
-
-        message.channel.send({ embeds: [infoEmbed] });
-    }
-
-    // أحداث DisTube
-    distube
-        .on("playSong", (queue, song) => {
-            try {
-                const embed = {
-                    color: 0x7289da,
-                    author: {
-                        name: "🎵 بدأ التشغيل",
-                        icon_url: client.user?.displayAvatarURL()
-                    },
-                    title: song.name,
-                    description: `**الفنان:** ${song.uploader?.name || "غير معروف"}\n**المدة:** ${song.formattedDuration || "غير معروف"}`,
-                    fields: [
-                        { name: "👤 طلبها", value: song.user?.toString() || "غير معروف", inline: true },
-                        { name: "🎧 الروم الصوتي", value: queue.voice?.channel?.name || "غير معروف", inline: true },
-                        { name: "📺 المصدر", value: "YouTube", inline: true }
-                    ],
-                    thumbnail: {
-                        url: song.thumbnail || "https://via.placeholder.com/300x300/7289da/ffffff?text=🎵"
-                    },
-                    footer: {
-                        text: `في القائمة: ${queue.songs?.length || 0} أغنية`,
-                    },
-                    timestamp: new Date()
-                };
-
-                if (song.url) embed.url = song.url;
-
-                queue.textChannel?.send({ embeds: [embed] }).catch(console.error);
-            } catch (error) {
-                console.error("خطأ في إرسال رسالة playSong:", error);
-                queue.textChannel?.send(`🎶 **يتم تشغيل:** ${song.name}`).catch(console.error);
-            }
-        })
-        .on("addSong", (queue, song) => {
-            try {
-                if (queue.songs.length === 1) return; // لا تظهر رسالة للأغنية الأولى
-
-                const embed = {
-                    color: 0x00ff00,
-                    title: "➕ تمت الإضافة للقائمة",
-                    description: `**${song.name}**`,
-                    fields: [
-                        { name: "⏱️ المدة", value: song.formattedDuration || "غير معروف", inline: true },
-                        { name: "📍 الترتيب", value: `${queue.songs.length}`, inline: true },
-                        { name: "👤 طلبها", value: song.user?.toString() || "غير معروف", inline: true }
-                    ],
-                    thumbnail: {
-                        url: song.thumbnail || "https://via.placeholder.com/300x300/00ff00/ffffff?text=➕"
-                    },
-                    footer: { text: `إجمالي الأغاني: ${queue.songs.length}` }
-                };
-
-                queue.textChannel?.send({ embeds: [embed] }).catch(console.error);
-            } catch (error) {
-                console.error("خطأ في إرسال رسالة addSong:", error);
-            }
-        })
-        .on("noRelated", queue => {
-            queue.textChannel?.send("❌ لم يتم العثور على أغاني مشابهة.").catch(console.error);
-        })
-        .on("searchNoResult", (message, query) => {
-            message.channel?.send(`❌ لم يتم العثور على نتائج للبحث: **${query}**\n🔍 جرب كلمات مختلفة`).catch(console.error);
-        })
-        .on("empty", queue => {
-            queue.textChannel?.send({
-                embeds: [{
-                    color: 0x00ff00,
-                    title: "🎵 الروم فارغ لكنني هنا!",
-                    description: "جميع الأعضاء غادروا الروم الصوتي، لكنني سأبقى هنا منتظراً عودتكم! 🎶\n\n**لن أغادر الروم أبداً** ✨"
-                }]
-            }).catch(console.error);
-        })
-        .on("finish", queue => {
-            queue.textChannel?.send({
-                embeds: [{
-                    color: 0x00ff00,
-                    title: "✅ انتهت قائمة التشغيل",
-                    description: "تم الانتهاء من تشغيل جميع الأغاني!\n\n🎶 **سأبقى في الروم منتظراً أغاني جديدة** 🎵\n\nأضف المزيد باستخدام أمر التشغيل."
-                }]
-            }).catch(console.error);
-        })
-        .on("disconnect", queue => {
-            queue.textChannel?.send({
-                embeds: [{
-                    color: 0xff9500,
-                    title: "⚠️ انقطع الاتصال",
-                    description: "تم قطع الاتصال من الروم الصوتي.\n\n🎶 استخدم أمر **انضم** أو ابدأ تشغيل أغنية للعودة!"
-                }]
-            }).catch(console.error);
-        })
-        .on("error", (channel, error) => {
-            console.error("خطأ في DisTube:", error);
-            
-            if (channel && typeof channel.send === 'function') {
-                // معالجة خاصة لخطأ 429
-                if (error.message.includes('429') || error.message.includes('Too Many Requests')) {
-                    channel.send({
-                        embeds: [{
-                            color: 0xff9500,
-                            title: "⏳ مشكلة مؤقتة مع YouTube",
-                            description: "YouTube يحد من الطلبات حالياً. جرب مرة أخرى خلال بضع دقائق.",
-                            fields: [
-                                {
-                                    name: "💡 بدائل",
-                                    value: "• استخدم رابط YouTube مباشر\n• انتظر 5-10 دقائق\n• جرب أغنية أخرى",
-                                    inline: false
-                                }
-                            ],
-                            footer: { text: "هذا خطأ مؤقت من YouTube" }
-                        }]
-                    }).catch(console.error);
-                } else if (error.message.includes('Video unavailable') || error.message.includes('Private video')) {
-                    channel.send({
-                        embeds: [{
-                            color: 0xff0000,
-                            title: "❌ الفيديو غير متاح",
-                            description: "هذا الفيديو قد يكون:\n• محذوف أو خاص\n• محظور في منطقتك\n• مقيد بحقوق الطبع",
-                            footer: { text: "جرب أغنية أخرى" }
-                        }]
-                    }).catch(console.error);
-                } else {
-                    channel.send({
-                        embeds: [{
-                            color: 0xff0000,
-                            title: "❌ خطأ في تشغيل الموسيقى",
-                            description: "حدث خطأ أثناء تشغيل الموسيقى. جرب مرة أخرى بكلمات أبسط.",
-                            fields: [
-                                {
-                                    name: "نصائح للبحث الأفضل",
-                                    value: "• استخدم كلمات قصيرة\n• جرب اسم الفنان فقط\n• انتظر قليلاً ثم جرب مرة أخرى",
-                                    inline: false
-                                }
-                            ],
-                            footer: { text: "البوت يعمل بشكل طبيعي، المشكلة من YouTube" }
-                        }]
-                    }).catch(console.error);
-                }
-            }
-        });
-
-    // أحداث العميل
-    client.once("ready", () => {
-        console.log(`✅ تم تسجيل الدخول كـ ${client.user.tag}`);
-        console.log(`🎵 البوت ${config.name} جاهز للاستخدام!`);
-        console.log(`🌐 البوت متصل بـ ${client.guilds.cache.size} خادم`);
-
-        // تحديث حالة البوت
-        client.user.setActivity('ش [اسم الأغنية] | مساعدة للأوامر', { 
-            type: ActivityType.Listening 
-        });
-    });
-
-    client.on("error", error => {
-        console.error(`خطأ في العميل ${config.name}:`, error);
-    });
-
-    client.on("warn", warning => {
-        console.warn(`تحذير من العميل ${config.name}:`, warning);
-    });
-
-    client.on("shardError", error => {
-        console.error(`خطأ في WebSocket ${config.name}:`, error);
-    });
-
-    // تسجيل دخول البوت
-    client.login(config.token).catch(error => {
-        console.error(`❌ فشل في تسجيل دخول البوت: ${config.name || 'Unknown'}`);
-        console.error("تفاصيل الخطأ:", error.message);
-        if (error.code === 'TOKEN_INVALID') {
-            console.error('🔑 التوكن غير صحيح! تأكد من التوكن في متغيرات البيئة');
-        }
-    });
-
-    return { client, distube };
-}
-
-// تشغيل البوتات
-    console.log('🚀 بدء تشغيل نظام البوت بواسطة Aziz...');
-console.log(`🌍 البيئة: ${process.env.NODE_ENV || 'development'}`);
-console.log(`🖥️ Node.js: ${process.version}`);
-console.log(`💾 الذاكرة: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB`);
-
-if (bots && bots.length > 0) {
-    console.log(`🤖 بدء تشغيل ${bots.length} بوت(ات)...`);
-    bots.forEach((config, index) => {
-        console.log(`\n--- تشغيل البوت ${index + 1}: ${config.name} ---`);
-        createBot(config);
-    });
-    console.log('\n🎉 تم بدء تشغيل جميع البوتات بنجاح!');
-} else {
-    console.error("❌ لم يتم العثور على أي بوتات في الإعدادات");
-    console.error("💡 تأكد من وجود BOT_TOKEN في متغيرات البيئة أو config.json");
-    process.exit(1);
-}

@@ -1,0 +1,106 @@
+# Lavalink Enhanced Configuration
+# Optimized for Lavamusic Enhanced Bot
+
+server: # REST and WS server
+  port: 2333
+  address: 0.0.0.0
+  http2:
+    enabled: false # Whether to enable HTTP/2 support
+
+plugins:
+  youtube:
+    enabled: true
+    allowSearch: true
+    allowDirectVideoIds: true
+    allowDirectPlaylistIds: true
+    clients: ["MUSIC", "ANDROID", "WEB"]
+    MUSIC:
+      playback: true
+    ANDROID: 
+      playback: true
+      searching: true
+    WEB:
+      playback: true
+      searching: true
+  lavasrc:
+    providers: # Custom providers for additional sources
+      - "ytsearch:\"%ISRC%\"" # Will be ignored if track does not have an ISRC. See https://en.wikipedia.org/wiki/International_Standard_Recording_Code
+      - "ytsearch:%QUERY%" # Will be used if track has no ISRC or if track does not have a match on the above query
+      # - "scsearch:%QUERY%" # You can have multiple sources here
+    sources:
+      spotify: true # Enable Spotify source
+      applemusic: false # Enable Apple Music source
+      deezer: true # Enable Deezer source
+      yandexmusic: false # Enable Yandex Music source
+      flowerytts: false # Enable Flowery TTs source
+      youtube: true # Enable YouTube source
+    spotify:
+      clientId: "${SPOTIFY_CLIENT_ID:}"
+      clientSecret: "${SPOTIFY_CLIENT_SECRET:}"
+      countryCode: "US" # the country code you want to use for filtering the artists top tracks. See https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+      playlistLoadLimit: 6 # The number of pages at 100 tracks each
+      albumLoadLimit: 6 # The number of pages at 50 tracks each
+    applemusic:
+      countryCode: "US" # the country code you want to use for filtering the artists top tracks and language. See https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+      mediaAPIToken: "${APPLE_MUSIC_API_TOKEN:}" # apple music api token
+      playlistLoadLimit: 6 # The number of pages at 300 tracks each
+      albumLoadLimit: 6 # The number of pages at 300 tracks each
+    deezer:
+      masterDecryptionKey: "${DEEZER_MASTER_KEY:}" # the master key used for decrypting the deezer tracks. (yes this is not here you need to get it from somewhere else)
+
+lavalink:
+  plugins:
+    - dependency: "com.github.topi314.lavasrc:lavasrc-plugin:4.2.0"
+      repository: "https://maven.lavalink.dev/snapshots" # this is optional for lavalink v4.0.0+
+    - dependency: "com.github.lavalink-devs:youtube-source:1.5.2"
+      repository: "https://maven.lavalink.dev/snapshots"
+    - dependency: "dev.lavalink.youtube:youtube-plugin:1.5.2"
+      repository: "https://maven.lavalink.dev/snapshots"
+    # JioSaavn Plugin (for Indian music)
+    - dependency: "com.github.c0ders-io:jiosaavn-plugin:1.0.0"
+      repository: "https://jitpack.io"
+  server:
+    password: "${LAVALINK_PASSWORD:youshallnotpass}"
+    sources:
+      youtube: true
+      bandcamp: true
+      soundcloud: true
+      twitch: true
+      vimeo: false
+      http: true # warning: keeping HTTP enabled without a proxy is a security risk
+      local: false
+    filters: # All filters are enabled by default
+      volume: true
+      equalizer: true
+      karaoke: true
+      timescale: true
+      tremolo: true
+      vibrato: true
+      distortion: true
+      rotation: true
+      channelMix: true
+      lowPass: true
+    bufferDurationMs: 400 # The duration of the NAS buffer. Higher values fare better against longer GC pauses. Duration <= 0 to disable JDA-NAS. Minimum of 40ms, lower values may introduce stuttering.
+    frameBufferDurationMs: 5000 # How many milliseconds of audio to keep buffered
+    opusEncodingQuality: 10 # Opus encoder quality. Valid values range from 0 to 10, where 10 is the best quality but is the most expensive on the CPU.
+    resamplingQuality: HIGH # Quality of resampling operations. Valid values are LOW, MEDIUM and HIGH, where HIGH uses the most CPU but produces the best audio quality.
+    trackStuckThresholdMs: 10000 # The threshold for how long a track can be stuck. A track is stuck if it does not return any audio data.
+    useSeekGhosting: true # Seek ghosting is the effect where whilst a seek is in progress, the audio buffer is read from until empty, or until seek is ready.
+    youtubePlaylistLoadLimit: 6 # Number of pages at 100 videos each
+    playerUpdateInterval: 5 # How frequently to send player updates to clients, in seconds
+    youtubeSearchEnabled: true
+    soundcloudSearchEnabled: true
+    gc-warnings: true
+    #ratelimit:
+      #ipBlocks: ["1.0.0.0/8", "..."] # list of ip blocks
+      #excludedIps: ["...", "..."] # ips which should be explicit excluded from usage by lavalink
+      #strategy: "RotateOnBan" # RotateOnBan | LoadBalance | NanoSwitch | RotatingNanoSwitch
+      #searchTriggersFail: true # Whether a search 429 should trigger marking the ip as failing
+      #retryLimit: -1 # -1 = use default lavaplayer value | 0 = infinity | >0 = retry will happen this numbers times
+
+  # Enhanced logging configuration
+  logging:
+    file:
+      path: ./logs/
+    level:
+      root: INFO

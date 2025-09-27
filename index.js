@@ -24,6 +24,42 @@ for (const [packageName, version] of Object.entries(requiredPackages)) {
         console.log(`✅ ${packageName} موجود`);
     }
 
+    // دالة الانضمام للروم الصوتي
+    async function handleJoinCommand(message, client) {
+        if (!message.member.voice.channel) {
+            return message.channel.send({
+                embeds: [{
+                    color: 0xff0000,
+                    title: "⚠️ لست في روم صوتي",
+                    description: "يجب أن تكون في روم صوتي أولاً حتى أتمكن من الانضمام إليك!"
+                }]
+            });
+        }
+
+        try {
+            const voiceChannel = message.member.voice.channel;
+            await voiceChannel.join();
+            
+            message.channel.send({
+                embeds: [{
+                    color: 0x00ff00,
+                    title: "✅ انضممت للروم الصوتي",
+                    description: `تم الانضمام إلى **${voiceChannel.name}** بنجاح! 🎵\n\n**سأبقى هنا منتظراً الأوامر!** 🎶`,
+                    footer: { text: "استخدم أمر 'ش' لتشغيل الموسيقى" }
+                }]
+            });
+        } catch (error) {
+            console.error("خطأ في الانضمام للروم:", error);
+            message.channel.send({
+                embeds: [{
+                    color: 0xff0000,
+                    title: "❌ فشل في الانضمام",
+                    description: "لا أستطيع الانضمام لهذا الروم الصوتي.\n\nتأكد من أن لدي صلاحيات الدخول والتحدث في الروم."
+                }]
+            });
+        }
+    }
+
     // دالة تشغيل الروابط المباشرة (تتجنب خطأ 429)
     async function handleDirectPlayCommand(message, url, distube) {
         if (!message.member.voice.channel) {
@@ -238,10 +274,10 @@ function createBot(config) {
         savePreviousSongs: false, // توفير ذاكرة للاستضافة المجانية
         nsfw: false,
         searchSongs: 1, // تقليل استهلاك الذاكرة
-        emptyCooldown: 0,
-        leaveOnEmpty: false,
-        leaveOnFinish: false,
-        leaveOnStop: false,
+        emptyCooldown: 0, // لا تنتظر عند فراغ الروم
+        leaveOnEmpty: false, // لا تطلع من الروم عند فراغه
+        leaveOnFinish: false, // لا تطلع عند انتهاء القائمة
+        leaveOnStop: false, // لا تطلع عند الإيقاف
         searchCooldown: 10, // إضافة تأخير بين البحثات
         youtubeDL: false, // تعطيل youtube-dl لتقليل الطلبات
         updateYouTubeDL: false, // عدم تحديث youtube-dl تلقائياً
@@ -291,6 +327,10 @@ function createBot(config) {
         // أمر معلومات البوت
         else if (["معلومات", "info", "about"].includes(content)) {
             await handleInfoCommand(message, client);
+        }
+        // أمر الانضمام للروم
+        else if (["انضم", "join", "تعال"].includes(content)) {
+            await handleJoinCommand(message, client);
         }
     });
 
@@ -443,7 +483,7 @@ function createBot(config) {
         }
     }
 
-    // دالة الإيقاف
+    // دالة الإيقاف (بدون مغادرة الروم)
     async function handleStopCommand(message, distube) {
         try {
             const queue = distube.getQueue(message.guild.id);
@@ -451,12 +491,15 @@ function createBot(config) {
                 return message.channel.send("⚠️ لا توجد موسيقى قيد التشغيل.");
             }
 
-            await distube.stop(message.guild.id);
+            // إيقاف الموسيقى بدون مغادرة الروم
+            queue.songs = []; // إفراغ القائمة
+            queue.stop(); // إيقاف التشغيل الحالي
+            
             message.channel.send({
                 embeds: [{
                     color: 0xff0000,
                     title: "⏹️ تم إيقاف الموسيقى",
-                    description: "تم إيقاف جميع الأغاني وإفراغ القائمة",
+                    description: "تم إيقاف جميع الأغاني وإفراغ القائمة\n\n🎶 **سأبقى في الروم منتظراً أغاني جديدة!** 🎵",
                     footer: { text: "استخدم أمر التشغيل لبدء أغنية جديدة" }
                 }]
             });
@@ -537,7 +580,7 @@ function createBot(config) {
                 },
                 {
                     name: "📋 المعلومات والقوائم",
-                    value: "**قائمة** / **queue** / **q** - عرض قائمة التشغيل\n**معلومات** / **info** - معلومات البوت\n**مساعدة** / **help** - عرض هذه الرسالة",
+                    value: "**قائمة** / **queue** / **q** - عرض قائمة التشغيل\n**معلومات** / **info** - معلومات البوت\n**مساعدة** / **help** - عرض هذه الرسالة\n**انضم** / **join** - الانضمام للروم الصوتي",
                     inline: false
                 },
                 {
@@ -547,7 +590,7 @@ function createBot(config) {
                 },
                 {
                     name: "🔧 نصائح لتجنب الأخطاء",
-                    value: "• استخدم كلمات قصيرة وبسيطة\n• ابدأ باسم الفنان فقط\n• تجنب الكلمات الطويلة أو المعقدة\n• انتظر قليلاً بين الطلبات",
+                    value: "• استخدم كلمات قصيرة وبسيطة\n• ابدأ باسم الفنان فقط\n• تجنب الكلمات الطويلة أو المعقدة\n• انتظر قليلاً بين الطلبات\n• **البوت لن يغادر الروم أبداً!** 🎵",
                     inline: false
                 }
             ],
@@ -654,9 +697,9 @@ function createBot(config) {
         .on("empty", queue => {
             queue.textChannel?.send({
                 embeds: [{
-                    color: 0xffa500,
-                    title: "⚠️ الروم الصوتي فارغ",
-                    description: "جميع الأعضاء غادروا الروم الصوتي، لكنني سأبقى هنا منتظراً عودتكم! 🎵"
+                    color: 0x00ff00,
+                    title: "🎵 الروم فارغ لكنني هنا!",
+                    description: "جميع الأعضاء غادروا الروم الصوتي، لكنني سأبقى هنا منتظراً عودتكم! 🎶\n\n**لن أغادر الروم أبداً** ✨"
                 }]
             }).catch(console.error);
         })
@@ -665,18 +708,32 @@ function createBot(config) {
                 embeds: [{
                     color: 0x00ff00,
                     title: "✅ انتهت قائمة التشغيل",
-                    description: "تم الانتهاء من تشغيل جميع الأغاني! أضف المزيد باستخدام أمر التشغيل."
+                    description: "تم الانتهاء من تشغيل جميع الأغاني!\n\n🎶 **سأبقى في الروم منتظراً أغاني جديدة** 🎵\n\nأضف المزيد باستخدام أمر التشغيل."
                 }]
             }).catch(console.error);
         })
         .on("disconnect", queue => {
-            queue.textChannel?.send({
-                embeds: [{
-                    color: 0xff0000,
-                    title: "👋 تم قطع الاتصال",
-                    description: "تم قطع الاتصال من الروم الصوتي."
-                }]
-            }).catch(console.error);
+            // إعادة الاتصال تلقائياً
+            if (queue.voice?.channel) {
+                try {
+                    queue.voice.channel.join();
+                    queue.textChannel?.send({
+                        embeds: [{
+                            color: 0x00ff00,
+                            title: "🔄 إعادة الاتصال",
+                            description: "تم إعادة الاتصال بالروم الصوتي تلقائياً! 🎵"
+                        }]
+                    }).catch(console.error);
+                } catch (error) {
+                    queue.textChannel?.send({
+                        embeds: [{
+                            color: 0xff0000,
+                            title: "⚠️ انقطع الاتصال",
+                            description: "تم قطع الاتصال من الروم الصوتي.\nاستخدم أمر التشغيل لإعادة الاتصال."
+                        }]
+                    }).catch(console.error);
+                }
+            }
         })
         .on("error", (channel, error) => {
             console.error("خطأ في DisTube:", error);

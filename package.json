@@ -22,8 +22,10 @@
   "author": "Your Name",
   "license": "MIT",
   "engines": {
-    "node": "18.x",
-    "npm": "9.x"
+    "node": "20.x",
+    "npm": "10.x"
+  }
+}
   },
   "dependencies": {
     "discord.js": "^14.14.1",

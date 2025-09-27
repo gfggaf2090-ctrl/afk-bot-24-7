@@ -1,0 +1,12 @@
+[
+  {
+    "name": "MusicBot1",
+    "token": "BOT_TOKEN_1",
+    "textChannel": "1301604906150400004"
+  },
+  {
+    "name": "MusicBot2",
+    "token": "BOT_TOKEN_2",
+    "textChannel": "1421502759810633798"
+  }
+]

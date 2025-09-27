@@ -286,8 +286,6 @@ function createBot(config) {
         leaveOnFinish: false, // لا تطلع عند انتهاء القائمة
         leaveOnStop: false, // لا تطلع عند الإيقاف
         searchCooldown: 10, // إضافة تأخير بين البحثات
-        youtubeDL: false, // تعطيل youtube-dl لتقليل الطلبات
-        updateYouTubeDL: false, // عدم تحديث youtube-dl تلقائياً
         plugins: [
             // يمكن إضافة plugins هنا إذا كانت متوفرة
         ]
@@ -640,9 +638,10 @@ function createBot(config) {
     distube
         .on("playSong", (queue, song) => {
             try {
-                // تحديث حالة البوت لإظهار الأغنية الحالية
-                client.user.setActivity(`Now Playing: ${song.name}`, { 
-                    type: ActivityType.Listening 
+                // تحديث حالة البوت لإظهار الأغنية الحالية مع Streaming
+                client.user.setActivity(`${song.name}`, { 
+                    type: ActivityType.Streaming,
+                    url: 'https://www.twitch.tv/discord' // URL مطلوب للـ Streaming
                 });
 
                 const embed = {
@@ -719,9 +718,10 @@ function createBot(config) {
             }).catch(console.error);
         })
         .on("finish", queue => {
-            // تحديث حالة البوت عند انتهاء القائمة
-            client.user.setActivity('ش [اسم الأغنية] | مساعدة للأوامر', { 
-                type: ActivityType.Listening 
+            // تحديث حالة البوت عند انتهاء القائمة مع Streaming
+            client.user.setActivity('في انتظار أغاني جديدة', { 
+                type: ActivityType.Streaming,
+                url: 'https://www.twitch.tv/discord'
             });
 
             queue.textChannel?.send({
@@ -734,9 +734,10 @@ function createBot(config) {
             }).catch(console.error);
         })
         .on("disconnect", queue => {
-            // تحديث حالة البوت عند قطع الاتصال
+            // تحديث حالة البوت عند قطع الاتصال مع Streaming
             client.user.setActivity('منقطع | استخدم "انضم" للعودة', { 
-                type: ActivityType.Watching 
+                type: ActivityType.Streaming,
+                url: 'https://www.twitch.tv/discord'
             });
 
             queue.textChannel?.send({
@@ -804,9 +805,10 @@ function createBot(config) {
         console.log(`🎵 البوت ${config.name} جاهز للاستخدام!`);
         console.log(`🌐 البوت متصل بـ ${client.guilds.cache.size} خادم`);
 
-        // تحديث حالة البوت
+        // تحديث حالة البوت مع Streaming
         client.user.setActivity('ش [اسم الأغنية] | مساعدة للأوامر', { 
-            type: ActivityType.Listening 
+            type: ActivityType.Streaming,
+            url: 'https://www.twitch.tv/discord'
         });
     });
 

@@ -278,17 +278,18 @@ function createBot(config) {
     // إعداد DisTube مع خيارات محسنة لتجنب خطأ 429
     const distube = new DisTube(client, {
         emitNewSongOnly: true,
-        savePreviousSongs: false, // توفير ذاكرة للاستضافة المجانية
+        savePreviousSongs: false,
         nsfw: false,
-        searchSongs: 1, // تقليل استهلاك الذاكرة
-        emptyCooldown: 0, // لا تنتظر عند فراغ الروم
-        leaveOnEmpty: false, // لا تطلع من الروم عند فراغه
-        leaveOnFinish: false, // لا تطلع عند انتهاء القائمة
-        leaveOnStop: false, // لا تطلع عند الإيقاف
-        searchCooldown: 10, // إضافة تأخير بين البحثات
-        plugins: [
-            // يمكن إضافة plugins هنا إذا كانت متوفرة
-        ]
+        searchSongs: 1,
+        emptyCooldown: 0,
+        leaveOnEmpty: false,
+        leaveOnFinish: false,
+        leaveOnStop: false,
+        searchCooldown: 30, // زيادة التأخير بين البحثات لتجنب 429
+        customFilters: {},
+        ffmpeg: {
+            path: process.env.FFMPEG_PATH || 'ffmpeg'
+        }
     });
 
     client.on("messageCreate", async (message) => {
@@ -301,12 +302,12 @@ function createBot(config) {
         const originalContent = message.content.trim();
 
         // أمر "aziz" → البحث وتشغيل الأغنية
-        if (content.startsWith("ش ")) {
+        if (content.startsWith("aziz ")) {
             await handlePlayCommand(message, originalContent.replace(/^aziz\s+/, "").trim(), distube);
         }
         // أمر "aziz" بدون كلام → رسالة تنبيه
-        else if (content === "ش") {
-            message.channel.send("⚠️ اكتب اسم الأغنية بعد الأمر!\nمثال: ش أم كلثوم");
+        else if (content === "aziz") {
+            message.channel.send("⚠️ اكتب اسم الأغنية بعد الأمر!\nمثال: aziz أم كلثوم");
         }
         // أمر التشغيل بالبحث (متعدد)
         else if (content.startsWith("شغل ") || content.startsWith("play ") || content.startsWith("p ")) {
@@ -350,21 +351,39 @@ function createBot(config) {
         }
     });
 
-    // دالة تشغيل الأغاني مع معالجة محسنة للأخطاء
+    // دالة تشغيل الأغاني مع معالجة محسنة لخطأ 429
     async function handlePlayCommand(message, query, distube) {
         if (!message.member.voice.channel) {
             return message.channel.send("⚠️ يجب أن تكون في روم صوتي أولاً!");
         }
 
         if (!query) {
-            return message.channel.send("⚠️ اكتب اسم الأغنية بعد الأمر!\nمثال: ش أم كلثوم");
+            return message.channel.send("⚠️ اكتب اسم الأغنية بعد الأمر!\nمثال: aziz أم كلثوم");
         }
 
         const loadingMsg = await message.channel.send(`🔍 جاري البحث عن: **${query}**...`);
 
-        // إضافة تأخير قصير لتجنب الطلبات السريعة
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // تأخير أطول لتجنب خطأ 429
+        await new Promise(resolve => setTimeout(resolve, 3000));
 
+        try {
+            // محاولة مع استراتيجيات متعددة للتعامل مع 429
+            await attemptPlay(message, query, distube, loadingMsg, 1);
+        } catch (error) {
+            console.error("خطأ في handlePlayCommand:", error.message);
+            await loadingMsg.edit({
+                embeds: [{
+                    color: 0xff0000,
+                    title: "❌ خطأ عام في التشغيل",
+                    description: "حدث خطأ غير متوقع. جرب مرة أخرى لاحقاً.",
+                    footer: { text: "تأكد من أن البوت لديه صلاحيات كافية" }
+                }]
+            });
+        }
+    }
+
+    // دالة محاولة التشغيل مع إدارة أفضل لخطأ 429
+    async function attemptPlay(message, query, distube, loadingMsg, attemptNumber) {
         try {
             await distube.play(message.member.voice.channel, query, {
                 member: message.member,
@@ -373,100 +392,80 @@ function createBot(config) {
             });
             await loadingMsg.delete().catch(() => {});
         } catch (error) {
-            console.error("خطأ في البحث الأول:", error.message);
+            console.error(`المحاولة ${attemptNumber} فشلت:`, error.message);
             
-            // معالجة خطأ 429 بشكل خاص
-            if (error.message.includes('429') || error.message.includes('Too Many Requests')) {
-                await loadingMsg.edit({
-                    embeds: [{
-                        color: 0xff9500,
-                        title: "⏳ خطأ مؤقت في الخدمة",
-                        description: `YouTube محدود حالياً. جرب مرة أخرى خلال دقيقة.\n\n**الأغنية المطلوبة:** ${query}`,
-                        fields: [
-                            {
-                                name: "💡 نصائح",
-                                value: "• انتظر دقيقة ثم جرب مرة أخرى\n• جرب اسم أقصر للأغنية\n• استخدم رابط YouTube مباشر إن أمكن",
-                                inline: false
-                            }
-                        ],
-                        footer: { text: "هذا خطأ مؤقت من YouTube، ليس من البوت" }
-                    }]
-                });
-                return;
-            }
-            
-            // محاولة بديلة مع استراتيجية مختلفة للبحث
-            try {
-                await new Promise(resolve => setTimeout(resolve, 3000)); // تأخير أطول
-                const simpleSearch = query.split(' ').slice(0, 2).join(' '); // أخذ أول كلمتين فقط
-                await loadingMsg.edit(`🔄 محاولة بديلة مع: **${simpleSearch}**...`);
-                await distube.play(message.member.voice.channel, simpleSearch, {
-                    member: message.member,
-                    textChannel: message.channel,
-                    message,
-                });
-                await loadingMsg.delete().catch(() => {});
-            } catch (secondError) {
-                console.error("خطأ في المحاولة البديلة:", secondError.message);
-                
-                // معالجة خطأ 429 في المحاولة الثانية
-                if (secondError.message.includes('429') || secondError.message.includes('Too Many Requests')) {
+            // معالجة خطأ 429 بشكل أكثر تفصيلاً
+            if (error.message.includes('429') || error.statusCode === 429) {
+                if (attemptNumber === 1) {
+                    // المحاولة الأولى - انتظار أطول
+                    await loadingMsg.edit(`⏳ YouTube مشغول... محاولة ${attemptNumber + 1}/3`);
+                    await new Promise(resolve => setTimeout(resolve, 15000)); // 15 ثانية
+                    
+                    const simpleQuery = query.split(' ').slice(0, 2).join(' ');
+                    await attemptPlay(message, simpleQuery, distube, loadingMsg, 2);
+                } else if (attemptNumber === 2) {
+                    // المحاولة الثانية - كلمة واحدة فقط
+                    await loadingMsg.edit(`🔄 محاولة أخيرة مع كلمة واحدة...`);
+                    await new Promise(resolve => setTimeout(resolve, 20000)); // 20 ثانية
+                    
+                    const firstWord = query.split(' ')[0];
+                    await attemptPlay(message, firstWord, distube, loadingMsg, 3);
+                } else {
+                    // المحاولة الأخيرة فشلت
                     await loadingMsg.edit({
                         embeds: [{
-                            color: 0xff0000,
-                            title: "❌ YouTube محدود حالياً",
-                            description: "يرجى المحاولة لاحقاً (خلال 5-10 دقائق)",
+                            color: 0xff9500,
+                            title: "⏳ YouTube محدود حالياً",
+                            description: `YouTube يرفض الطلبات حالياً بسبب كثرة الاستخدام.\n\n**الأغنية المطلوبة:** ${query}`,
                             fields: [
                                 {
-                                    name: "السبب",
-                                    value: "YouTube يحد من عدد الطلبات حالياً",
+                                    name: "⏰ متى يمكنني المحاولة مرة أخرى؟",
+                                    value: "• انتظر 10-15 دقيقة\n• جرب في وقت لاحق عندما يقل الازدحام\n• استخدم رابط YouTube مباشر إن أمكن",
                                     inline: false
                                 },
                                 {
-                                    name: "الحلول",
-                                    value: "• انتظر 5-10 دقائق ثم جرب مرة أخرى\n• استخدم كلمات أبسط وأقصر\n• جرب اسم الفنان فقط ثم اسم الأغنية",
+                                    name: "💡 نصائح لتجنب هذا الخطأ",
+                                    value: "• لا تكرر الطلبات بسرعة\n• استخدم كلمات بسيطة\n• انتظر بين الأغاني",
                                     inline: false
                                 }
                             ],
-                            footer: { text: "هذا خطأ مؤقت من YouTube" }
+                            footer: { text: "هذا ليس خطأ من البوت، بل من قيود YouTube" },
+                            timestamp: new Date()
                         }]
                     });
-                    return;
                 }
-                
-                // محاولة أخيرة مع اسم الفنان فقط
-                try {
-                    await new Promise(resolve => setTimeout(resolve, 5000)); // تأخير أطول جداً
-                    const artistOnly = query.split(' ')[0]; // أول كلمة فقط
-                    await loadingMsg.edit(`🔄 محاولة أخيرة مع: **${artistOnly}**...`);
-                    await distube.play(message.member.voice.channel, artistOnly, {
-                        member: message.member,
-                        textChannel: message.channel,
-                        message,
-                    });
-                    await loadingMsg.delete().catch(() => {});
-                } catch (thirdError) {
-                    console.error("خطأ في المحاولة الأخيرة:", thirdError.message);
-                    
-                    // رسالة خطأ نهائية مع نصائح مفيدة
+            } else if (error.message.includes('Video unavailable') || error.message.includes('Private')) {
+                await loadingMsg.edit({
+                    embeds: [{
+                        color: 0xff0000,
+                        title: "❌ الفيديو غير متاح",
+                        description: `لم أتمكن من العثور على: **${query}**\n\nقد يكون الفيديو محذوف أو خاص أو محظور.`,
+                        fields: [{
+                            name: "💡 اقتراحات",
+                            value: "• جرب كلمات أخرى\n• تأكد من كتابة اسم الأغنية بشكل صحيح\n• جرب أغنية أخرى",
+                            inline: false
+                        }],
+                        footer: { text: "جرب البحث بكلمات مختلفة" }
+                    }]
+                });
+            } else {
+                // أخطاء أخرى
+                if (attemptNumber < 2) {
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    const retryQuery = query.split(' ').slice(0, 3).join(' ');
+                    await attemptPlay(message, retryQuery, distube, loadingMsg, attemptNumber + 1);
+                } else {
                     await loadingMsg.edit({
                         embeds: [{
                             color: 0xff0000,
-                            title: "❌ فشل في العثور على الأغنية",
+                            title: "❌ فشل في البحث",
                             description: `لم أتمكن من العثور على: **${query}**`,
-                            fields: [
-                                {
-                                    name: "💡 نصائح للبحث الناجح",
-                                    value: "• استخدم كلمات أبسط وأقصر\n• جرب اسم الفنان فقط أولاً\n• استخدم الأسماء بالإنجليزية إن أمكن\n• انتظر دقائق قليلة ثم جرب مرة أخرى",
-                                    inline: false
-                                },
-                                {
-                                    name: "أمثلة على البحث الأمثل",
-                                    value: "بدلاً من: 'أم كلثوم الف ليلة وليلة'\nجرب: 'ام كلثوم' أو 'umm kulthum'",
-                                    inline: false
-                                }
-                            ],
-                            footer: { text: "جرب مرة أخرى خلال بضع دقائق" }
+                            fields: [{
+                                name: "🔍 نصائح للبحث الأفضل",
+                                value: "• استخدم كلمات أبسط\n• جرب اسم الفنان فقط\n• استخدم الإنجليزية إن أمكن\n• تأكد من الإملاء الصحيح",
+                                inline: false
+                            }],
+                            footer: { text: "جرب مرة أخرى بكلمات مختلفة" }
                         }]
                     });
                 }
@@ -817,7 +816,7 @@ function createBot(config) {
         console.log(`🌐 البوت متصل بـ ${client.guilds.cache.size} خادم`);
 
         // تحديث حالة البوت مع Streaming
-        client.user.setActivity('Aziz', { 
+        client.user.setActivity('ش [اسم الأغنية] | مساعدة للأوامر', { 
             type: ActivityType.Streaming,
             url: 'https://www.twitch.tv/discord'
         });

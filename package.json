@@ -1,35 +1,46 @@
 {
-  "name": "discord-arabic-music-bot",
-  "version": "2.1.0",
-  "description": "Discord music bot with Arabic support",
+  "name": "arabic-discord-music-bot",
+  "version": "2.0.0",
+  "description": "Arabic Discord Music Bot with DisTube for Render deployment",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build": "npm install"
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "distube": "^4.2.0",
+    "@distube/ytdl-core": "^4.13.5",
+    "ytdl-core": "^4.11.5",
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "ffmpeg-static": "^5.2.0",
+    "@discordjs/voice": "^0.16.1",
+    "@discordjs/opus": "^0.9.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
   },
   "engines": {
-  "node": "20.18.1"
-},
-  "dependencies": {
-    "discord.js": "14.13.0",
-    "distube": "github:distubejs/distube", 
-    "ytdl-core": "4.11.4",
-    "@discordjs/voice": "0.15.0",
-    "@discordjs/opus": "0.8.0",
-    "@ffmpeg-installer/ffmpeg": "1.1.0",
-    "ffmpeg-static": "5.1.0",
-    "express": "4.18.2"
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/arabic-discord-music-bot.git"
   },
   "keywords": [
     "discord",
-    "bot",
     "music",
-    "arabic"
+    "bot",
+    "arabic",
+    "distube",
+    "youtube",
+    "render"
   ],
   "author": "Your Name",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/gfggaf2090-ctrl/afk-bot-24-7.git"
-  }
+  "bugs": {
+    "url": "https://github.com/your-username/arabic-discord-music-bot/issues"
+  },
+  "homepage": "https://github.com/your-username/arabic-discord-music-bot#readme"
 }

@@ -37,8 +37,14 @@ for (const [packageName, version] of Object.entries(requiredPackages)) {
         }
 
         try {
+            const { joinVoiceChannel } = require('@discordjs/voice');
             const voiceChannel = message.member.voice.channel;
-            await voiceChannel.join();
+            
+            joinVoiceChannel({
+                channelId: voiceChannel.id,
+                guildId: message.guild.id,
+                adapterCreator: message.guild.voiceAdapterCreator
+            });
             
             message.channel.send({
                 embeds: [{
@@ -492,8 +498,7 @@ function createBot(config) {
             }
 
             // إيقاف الموسيقى بدون مغادرة الروم
-            queue.songs = []; // إفراغ القائمة
-            queue.stop(); // إيقاف التشغيل الحالي
+            await distube.stop(message.guild.id);
             
             message.channel.send({
                 embeds: [{
@@ -713,27 +718,13 @@ function createBot(config) {
             }).catch(console.error);
         })
         .on("disconnect", queue => {
-            // إعادة الاتصال تلقائياً
-            if (queue.voice?.channel) {
-                try {
-                    queue.voice.channel.join();
-                    queue.textChannel?.send({
-                        embeds: [{
-                            color: 0x00ff00,
-                            title: "🔄 إعادة الاتصال",
-                            description: "تم إعادة الاتصال بالروم الصوتي تلقائياً! 🎵"
-                        }]
-                    }).catch(console.error);
-                } catch (error) {
-                    queue.textChannel?.send({
-                        embeds: [{
-                            color: 0xff0000,
-                            title: "⚠️ انقطع الاتصال",
-                            description: "تم قطع الاتصال من الروم الصوتي.\nاستخدم أمر التشغيل لإعادة الاتصال."
-                        }]
-                    }).catch(console.error);
-                }
-            }
+            queue.textChannel?.send({
+                embeds: [{
+                    color: 0xff9500,
+                    title: "⚠️ انقطع الاتصال",
+                    description: "تم قطع الاتصال من الروم الصوتي.\n\n🎶 استخدم أمر **انضم** أو ابدأ تشغيل أغنية للعودة!"
+                }]
+            }).catch(console.error);
         })
         .on("error", (channel, error) => {
             console.error("خطأ في DisTube:", error);

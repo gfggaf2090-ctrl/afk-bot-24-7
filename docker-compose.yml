@@ -1,0 +1,232 @@
+version: '3.8'
+
+services:
+  # Lavalink Server
+  lavalink:
+    image: ghcr.io/lavalink-devs/lavalink:4-alpine
+    container_name: lavamusic-lavalink
+    restart: unless-stopped
+    expose:
+      - 2333
+    ports:
+      - "2333:2333"
+    environment:
+      - _JAVA_OPTIONS=-Xmx2G
+      - SERVER_PORT=2333
+      - LAVALINK_PLUGINS_DIR=/opt/Lavalink/plugins
+    volumes:
+      - ./Lavalink/application.yml:/opt/Lavalink/application.yml:ro
+      - ./Lavalink/plugins:/opt/Lavalink/plugins:ro
+      - lavalink_logs:/opt/Lavalink/logs
+    networks:
+      - lavamusic-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:2333/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL Database (Optional)
+  postgres:
+    image: postgres:15-alpine
+    container_name: lavamusic-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: lavamusic
+      POSTGRES_USER: lavamusic
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_here}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    networks:
+      - lavamusic-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lavamusic"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Cache (Optional)
+  redis:
+    image: redis:7-alpine
+    container_name: lavamusic-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
+    volumes:
+      - redis_data:/data
+    networks:
+      - lavamusic-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Lavamusic Enhanced Bot
+  lavamusic:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: lavamusic-enhanced
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    environment:
+      # Bot Configuration
+      - TOKEN=${TOKEN}
+      - CLIENT_ID=${CLIENT_ID}
+      - PREFIX=${PREFIX:-!}
+      - NODE_ENV=production
+      - PORT=${PORT:-3000}
+      
+      # Database
+      - DATABASE_URL=${DATABASE_URL:-postgresql://lavamusic:${POSTGRES_PASSWORD:-secure_password_here}@postgres:5432/lavamusic}
+      
+      # Lavalink
+      - LAVALINK_HOST=lavalink
+      - LAVALINK_PORT=2333
+      - LAVALINK_PASSWORD=${LAVALINK_PASSWORD:-youshallnotpass}
+      - LAVALINK_SECURE=false
+      
+      # Redis
+      - REDIS_URL=redis://default:${REDIS_PASSWORD:-redis_password}@redis:6379
+      
+      # YouTube Protection
+      - YOUTUBE_COOKIES=${YOUTUBE_COOKIES}
+      - RATE_LIMIT_PER_MINUTE=${RATE_LIMIT_PER_MINUTE:-5}
+      - RATE_LIMIT_PER_HOUR=${RATE_LIMIT_PER_HOUR:-100}
+      - RATE_LIMIT_PER_DAY=${RATE_LIMIT_PER_DAY:-500}
+      
+      # Features
+      - ENABLE_ADVANCED_PROTECTION=true
+      - ENABLE_CACHE=true
+      - ENABLE_AUTO_GC=true
+      
+      # Monitoring
+      - ENABLE_STATS_ENDPOINT=true
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - ./logs:/app/logs
+      - ./backups:/app/backups
+      - ./temp:/app/temp
+    networks:
+      - lavamusic-network
+    depends_on:
+      lavalink:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-3000}/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Nginx Reverse Proxy (Optional)
+  nginx:
+    image: nginx:alpine
+    container_name: lavamusic-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    networks:
+      - lavamusic-network
+    depends_on:
+      - lavamusic
+    profiles:
+      - nginx
+
+  # Monitoring with Prometheus (Optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: lavamusic-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - lavamusic-network
+    profiles:
+      - monitoring
+
+  # Grafana Dashboard (Optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: lavamusic-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - lavamusic-network
+    depends_on:
+      - prometheus
+    profiles:
+      - monitoring
+
+  # Backup Service
+  backup:
+    image: alpine:latest
+    container_name: lavamusic-backup
+    restart: "no"
+    environment:
+      - POSTGRES_USER=lavamusic
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-secure_password_here}
+      - POSTGRES_DB=lavamusic
+      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-0 2 * * *}
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+    networks:
+      - lavamusic-network
+    depends_on:
+      - postgres
+    command: >
+      sh -c "
+        apk add --no-cache postgresql-client dcron &&
+        echo '${BACKUP_SCHEDULE:-0 2 * * *} /backup.sh' | crontab - &&
+        crond -f
+      "
+    profiles:
+      - backup
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  lavalink_logs:
+    driver: local
+  nginx_logs:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  lavamusic-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

@@ -1,0 +1,22 @@
+{
+  "name": "aziz921102",
+  "version": "1.0.0",
+  "description": "Discord Music Bot with Arabic Commands",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "distube": "^4.0.4",
+    "@distube/yt-dlp": "^1.1.4",
+    "@ffmpeg-installer/ffmpeg": "^1.1.0"
+  },
+  "engines": {
+    "node": "18.x"
+  },
+  "keywords": ["discord", "bot", "music", "arabic"],
+  "author": "aziz921102",
+  "license": "MIT"
+}

@@ -592,11 +592,50 @@ function createBot(config) {
         console.log(`🌐 البوت متصل بـ ${client.guilds.cache.size} خادم`);
 
         // تحديث حالة البوت
-        client.
+        client.user.setActivity('🎵 ش [اسم الأغنية] | مساعدة للأوامر', { 
+            type: ActivityType.Listening 
+        });
+    });
 
-  console.log('\n🎉 تم بدء تشغيل جميع البوتات بنجاح!');
+    client.on("error", error => {
+        console.error(`خطأ في العميل ${config.name}:`, error);
+    });
+
+    client.on("warn", warning => {
+        console.warn(`تحذير من العميل ${config.name}:`, warning);
+    });
+
+    client.on("shardError", error => {
+        console.error(`خطأ في WebSocket ${config.name}:`, error);
+    });
+
+    // تسجيل دخول البوت
+    client.login(config.token).catch(error => {
+        console.error(`❌ فشل في تسجيل دخول البوت: ${config.name || 'Unknown'}`);
+        console.error("تفاصيل الخطأ:", error.message);
+        if (error.code === 'TOKEN_INVALID') {
+            console.error('🔑 التوكن غير صحيح! تأكد من التوكن في متغيرات البيئة');
+        }
+    });
+
+    return { client, distube };
+}
+
+// تشغيل البوتات
+console.log('🚀 بدء تشغيل نظام البوت...');
+console.log(`🌍 البيئة: ${process.env.NODE_ENV || 'development'}`);
+console.log(`🖥️ Node.js: ${process.version}`);
+console.log(`💾 الذاكرة: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB`);
+
+if (bots && bots.length > 0) {
+    console.log(`🤖 بدء تشغيل ${bots.length} بوت(ات)...`);
+    bots.forEach((config, index) => {
+        console.log(`\n--- تشغيل البوت ${index + 1}: ${config.name} ---`);
+        createBot(config);
+    });
+    console.log('\n🎉 تم بدء تشغيل جميع البوتات بنجاح!');
 } else {
-  console.error("❌ لم يتم العثور على أي بوتات في الإعدادات");
-  console.error("💡 تأكد من وجود BOT_TOKEN في متغيرات البيئة أو config.json");
-  process.exit(1);
+    console.error("❌ لم يتم العثور على أي بوتات في الإعدادات");
+    console.error("💡 تأكد من وجود BOT_TOKEN في متغيرات البيئة أو config.json");
+    process.exit(1);
 }

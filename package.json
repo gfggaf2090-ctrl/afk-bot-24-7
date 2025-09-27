@@ -1,56 +1,35 @@
 {
   "name": "discord-arabic-music-bot",
   "version": "2.1.0",
-  "description": "Discord music bot with Arabic support - Optimized for Render hosting",
+  "description": "Discord music bot with Arabic support",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js",
-    "build": "npm install",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "npm install"
+  },
+  "engines": {
+    "node": "20.x"
+  },
+  "dependencies": {
+    "discord.js": "14.13.0",
+    "distube": "4.0.4",
+    "ytdl-core": "4.11.4",
+    "@discordjs/voice": "0.15.0",
+    "@discordjs/opus": "0.8.0",
+    "@ffmpeg-installer/ffmpeg": "1.1.0",
+    "ffmpeg-static": "5.1.0",
+    "express": "4.18.2"
   },
   "keywords": [
     "discord",
     "bot",
     "music",
-    "arabic",
-    "youtube",
-    "distube",
-    "nodejs",
-    "render"
+    "arabic"
   ],
   "author": "Your Name",
   "license": "MIT",
-  "engines": {
-    "node": "20.x",
-    "npm": "10.x"
-  }
-}
-  },
-  "dependencies": {
-    "discord.js": "^14.14.1",
-    "distube": "^4.2.2",
-    "@distube/ytdl-core": "^4.13.3",
-    "ytdl-core": "^4.11.5",
-    "@ffmpeg-installer/ffmpeg": "^1.1.0",
-    "ffmpeg-static": "^5.2.0",
-    "@discordjs/voice": "^0.16.0",
-    "@discordjs/opus": "^0.9.0"
-  },
-  "optionalDependencies": {
-    "sodium-native": "^3.4.1",
-    "bufferutil": "^4.0.7",
-    "utf-8-validate": "^6.0.3"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/gfggaf2090-ctrl/afk-bot-24-7.git"
-  },
-  "bugs": {
-    "url": "https://github.com/gfggaf2090-ctrl/afk-bot-24-7/issues"
-  },
-  "homepage": "https://github.com/gfggaf2090-ctrl/afk-bot-24-7#readme"
+  }
 }

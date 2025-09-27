@@ -22,6 +22,41 @@ for (const [packageName, version] of Object.entries(requiredPackages)) {
     try {
         require.resolve(packageName);
         console.log(`✅ ${packageName} موجود`);
+    }
+
+    // دالة تشغيل الروابط المباشرة (تتجنب خطأ 429)
+    async function handleDirectPlayCommand(message, url, distube) {
+        if (!message.member.voice.channel) {
+            return message.channel.send("⚠️ يجب أن تكون في روم صوتي أولاً!");
+        }
+
+        const loadingMsg = await message.channel.send(`🎵 جاري تشغيل الرابط المباشر...`);
+
+        try {
+            await distube.play(message.member.voice.channel, url, {
+                member: message.member,
+                textChannel: message.channel,
+                message,
+            });
+            await loadingMsg.delete().catch(() => {});
+        } catch (error) {
+            console.error("خطأ في تشغيل الرابط المباشر:", error.message);
+            await loadingMsg.edit({
+                embeds: [{
+                    color: 0xff0000,
+                    title: "❌ فشل في تشغيل الرابط",
+                    description: "لم أتمكن من تشغيل هذا الرابط.",
+                    fields: [
+                        {
+                            name: "الأسباب المحتملة",
+                            value: "• الفيديو محذوف أو خاص\n• الرابط غير صحيح\n• مشكلة مؤقتة مع YouTube",
+                            inline: false
+                        }
+                    ],
+                    footer: { text: "تأكد من أن الرابط يعمل في المتصفح" }
+                }]
+            });
+        }
     } catch (error) {
         console.log(`❌ ${packageName} مفقود`);
         missingPackages.push(packageName);
@@ -82,7 +117,7 @@ const server = http.createServer((req, res) => {
         status: 'online',
         uptime: Math.floor(process.uptime()),
         timestamp: new Date().toISOString(),
-        message: 'Discord Arabic Music Bot is running!',
+        message: 'Discord Arabic Music Bot by Aziz is running!',
         bots: bots ? bots.length : 0,
         memory: process.memoryUsage(),
         packages_status: 'loaded'
@@ -197,7 +232,7 @@ function createBot(config) {
         ],
     });
 
-    // إعداد DisTube مع خيارات محسنة
+    // إعداد DisTube مع خيارات محسنة لتجنب خطأ 429
     const distube = new DisTube(client, {
         emitNewSongOnly: true,
         savePreviousSongs: false, // توفير ذاكرة للاستضافة المجانية
@@ -207,6 +242,9 @@ function createBot(config) {
         leaveOnEmpty: false,
         leaveOnFinish: false,
         leaveOnStop: false,
+        searchCooldown: 10, // إضافة تأخير بين البحثات
+        youtubeDL: false, // تعطيل youtube-dl لتقليل الطلبات
+        updateYouTubeDL: false, // عدم تحديث youtube-dl تلقائياً
         plugins: [
             // يمكن إضافة plugins هنا إذا كانت متوفرة
         ]
@@ -256,7 +294,7 @@ function createBot(config) {
         }
     });
 
-    // دالة تشغيل الأغاني
+    // دالة تشغيل الأغاني مع معالجة محسنة للأخطاء
     async function handlePlayCommand(message, query, distube) {
         if (!message.member.voice.channel) {
             return message.channel.send("⚠️ يجب أن تكون في روم صوتي أولاً!");
@@ -268,6 +306,9 @@ function createBot(config) {
 
         const loadingMsg = await message.channel.send(`🔍 جاري البحث عن: **${query}**...`);
 
+        // إضافة تأخير قصير لتجنب الطلبات السريعة
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
         try {
             await distube.play(message.member.voice.channel, query, {
                 member: message.member,
@@ -278,11 +319,32 @@ function createBot(config) {
         } catch (error) {
             console.error("خطأ في البحث الأول:", error.message);
             
-            // محاولة بديلة مع "music"
+            // معالجة خطأ 429 بشكل خاص
+            if (error.message.includes('429') || error.message.includes('Too Many Requests')) {
+                await loadingMsg.edit({
+                    embeds: [{
+                        color: 0xff9500,
+                        title: "⏳ خطأ مؤقت في الخدمة",
+                        description: `YouTube محدود حالياً. جرب مرة أخرى خلال دقيقة.\n\n**الأغنية المطلوبة:** ${query}`,
+                        fields: [
+                            {
+                                name: "💡 نصائح",
+                                value: "• انتظر دقيقة ثم جرب مرة أخرى\n• جرب اسم أقصر للأغنية\n• استخدم رابط YouTube مباشر إن أمكن",
+                                inline: false
+                            }
+                        ],
+                        footer: { text: "هذا خطأ مؤقت من YouTube، ليس من البوت" }
+                    }]
+                });
+                return;
+            }
+            
+            // محاولة بديلة مع استراتيجية مختلفة للبحث
             try {
-                const alternativeSearch = query + " music";
-                await loadingMsg.edit(`🔄 محاولة بديلة: **${alternativeSearch}**...`);
-                await distube.play(message.member.voice.channel, alternativeSearch, {
+                await new Promise(resolve => setTimeout(resolve, 3000)); // تأخير أطول
+                const simpleSearch = query.split(' ').slice(0, 2).join(' '); // أخذ أول كلمتين فقط
+                await loadingMsg.edit(`🔄 محاولة بديلة مع: **${simpleSearch}**...`);
+                await distube.play(message.member.voice.channel, simpleSearch, {
                     member: message.member,
                     textChannel: message.channel,
                     message,
@@ -291,11 +353,37 @@ function createBot(config) {
             } catch (secondError) {
                 console.error("خطأ في المحاولة البديلة:", secondError.message);
                 
-                // محاولة أخيرة مع YouTube search
+                // معالجة خطأ 429 في المحاولة الثانية
+                if (secondError.message.includes('429') || secondError.message.includes('Too Many Requests')) {
+                    await loadingMsg.edit({
+                        embeds: [{
+                            color: 0xff0000,
+                            title: "❌ YouTube محدود حالياً",
+                            description: "يرجى المحاولة لاحقاً (خلال 5-10 دقائق)",
+                            fields: [
+                                {
+                                    name: "السبب",
+                                    value: "YouTube يحد من عدد الطلبات حالياً",
+                                    inline: false
+                                },
+                                {
+                                    name: "الحلول",
+                                    value: "• انتظر 5-10 دقائق ثم جرب مرة أخرى\n• استخدم كلمات أبسط وأقصر\n• جرب اسم الفنان فقط ثم اسم الأغنية",
+                                    inline: false
+                                }
+                            ],
+                            footer: { text: "هذا خطأ مؤقت من YouTube" }
+                        }]
+                    });
+                    return;
+                }
+                
+                // محاولة أخيرة مع اسم الفنان فقط
                 try {
-                    const youtubeSearch = `ytsearch:${query}`;
-                    await loadingMsg.edit(`🔄 محاولة أخيرة...`);
-                    await distube.play(message.member.voice.channel, youtubeSearch, {
+                    await new Promise(resolve => setTimeout(resolve, 5000)); // تأخير أطول جداً
+                    const artistOnly = query.split(' ')[0]; // أول كلمة فقط
+                    await loadingMsg.edit(`🔄 محاولة أخيرة مع: **${artistOnly}**...`);
+                    await distube.play(message.member.voice.channel, artistOnly, {
                         member: message.member,
                         textChannel: message.channel,
                         message,
@@ -303,6 +391,8 @@ function createBot(config) {
                     await loadingMsg.delete().catch(() => {});
                 } catch (thirdError) {
                     console.error("خطأ في المحاولة الأخيرة:", thirdError.message);
+                    
+                    // رسالة خطأ نهائية مع نصائح مفيدة
                     await loadingMsg.edit({
                         embeds: [{
                             color: 0xff0000,
@@ -310,12 +400,17 @@ function createBot(config) {
                             description: `لم أتمكن من العثور على: **${query}**`,
                             fields: [
                                 {
-                                    name: "💡 نصائح للبحث",
-                                    value: "• جرب كلمات أبسط\n• أضف اسم الفنان\n• تأكد من الإملاء\n• جرب باللغة الإنجليزية",
+                                    name: "💡 نصائح للبحث الناجح",
+                                    value: "• استخدم كلمات أبسط وأقصر\n• جرب اسم الفنان فقط أولاً\n• استخدم الأسماء بالإنجليزية إن أمكن\n• انتظر دقائق قليلة ثم جرب مرة أخرى",
+                                    inline: false
+                                },
+                                {
+                                    name: "أمثلة على البحث الأمثل",
+                                    value: "بدلاً من: 'أم كلثوم الف ليلة وليلة'\nجرب: 'ام كلثوم' أو 'umm kulthum'",
                                     inline: false
                                 }
                             ],
-                            footer: { text: "جرب مرة أخرى بكلمات مختلفة" }
+                            footer: { text: "جرب مرة أخرى خلال بضع دقائق" }
                         }]
                     });
                 }
@@ -446,13 +541,18 @@ function createBot(config) {
                     inline: false
                 },
                 {
-                    name: "💡 أمثلة",
-                    value: "• ش أم كلثوم\n• شغل fairuz\n• play hello adele",
+                    name: "💡 أمثلة على البحث الأمثل",
+                    value: "• ش فيروز\n• ش عمرو دياب\n• شغل adele hello\n• ش محمد عبده",
+                    inline: false
+                },
+                {
+                    name: "🔧 نصائح لتجنب الأخطاء",
+                    value: "• استخدم كلمات قصيرة وبسيطة\n• ابدأ باسم الفنان فقط\n• تجنب الكلمات الطويلة أو المعقدة\n• انتظر قليلاً بين الطلبات",
                     inline: false
                 }
             ],
             footer: {
-                text: "استمتع بالموسيقى! 🎵 | البوت يدعم العربية والإنجليزية",
+                text: "تم تطويره بواسطة Aziz ❤️ | استمتع بالموسيقى! 🎵",
                 icon_url: client.user?.displayAvatarURL()
             },
             timestamp: new Date()
@@ -478,7 +578,7 @@ function createBot(config) {
                 { name: "📶 البنغ", value: `${Math.round(client.ws.ping)}ms`, inline: true }
             ],
             footer: {
-                text: "تم تطويره للمجتمع العربي ❤️",
+                text: "تم تطويره بواسطة Aziz ❤️",
                 icon_url: client.user?.displayAvatarURL()
             },
             timestamp: new Date()
@@ -580,8 +680,51 @@ function createBot(config) {
         })
         .on("error", (channel, error) => {
             console.error("خطأ في DisTube:", error);
+            
             if (channel && typeof channel.send === 'function') {
-                channel.send(`❌ حدث خطأ في تشغيل الموسيقى: ${error.message}`).catch(console.error);
+                // معالجة خاصة لخطأ 429
+                if (error.message.includes('429') || error.message.includes('Too Many Requests')) {
+                    channel.send({
+                        embeds: [{
+                            color: 0xff9500,
+                            title: "⏳ مشكلة مؤقتة مع YouTube",
+                            description: "YouTube يحد من الطلبات حالياً. جرب مرة أخرى خلال بضع دقائق.",
+                            fields: [
+                                {
+                                    name: "💡 بدائل",
+                                    value: "• استخدم رابط YouTube مباشر\n• انتظر 5-10 دقائق\n• جرب أغنية أخرى",
+                                    inline: false
+                                }
+                            ],
+                            footer: { text: "هذا خطأ مؤقت من YouTube" }
+                        }]
+                    }).catch(console.error);
+                } else if (error.message.includes('Video unavailable') || error.message.includes('Private video')) {
+                    channel.send({
+                        embeds: [{
+                            color: 0xff0000,
+                            title: "❌ الفيديو غير متاح",
+                            description: "هذا الفيديو قد يكون:\n• محذوف أو خاص\n• محظور في منطقتك\n• مقيد بحقوق الطبع",
+                            footer: { text: "جرب أغنية أخرى" }
+                        }]
+                    }).catch(console.error);
+                } else {
+                    channel.send({
+                        embeds: [{
+                            color: 0xff0000,
+                            title: "❌ خطأ في تشغيل الموسيقى",
+                            description: "حدث خطأ أثناء تشغيل الموسيقى. جرب مرة أخرى بكلمات أبسط.",
+                            fields: [
+                                {
+                                    name: "نصائح للبحث الأفضل",
+                                    value: "• استخدم كلمات قصيرة\n• جرب اسم الفنان فقط\n• انتظر قليلاً ثم جرب مرة أخرى",
+                                    inline: false
+                                }
+                            ],
+                            footer: { text: "البوت يعمل بشكل طبيعي، المشكلة من YouTube" }
+                        }]
+                    }).catch(console.error);
+                }
             }
         });
 
@@ -592,7 +735,7 @@ function createBot(config) {
         console.log(`🌐 البوت متصل بـ ${client.guilds.cache.size} خادم`);
 
         // تحديث حالة البوت
-        client.user.setActivity('🎵 ش [اسم الأغنية] | مساعدة للأوامر', { 
+        client.user.setActivity('ش [اسم الأغنية] | مساعدة للأوامر', { 
             type: ActivityType.Listening 
         });
     });
@@ -622,7 +765,7 @@ function createBot(config) {
 }
 
 // تشغيل البوتات
-console.log('🚀 بدء تشغيل نظام البوت...');
+    console.log('🚀 بدء تشغيل نظام البوت بواسطة Aziz...');
 console.log(`🌍 البيئة: ${process.env.NODE_ENV || 'development'}`);
 console.log(`🖥️ Node.js: ${process.version}`);
 console.log(`💾 الذاكرة: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB`);

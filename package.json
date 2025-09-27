@@ -8,8 +8,8 @@
     "build": "npm install"
   },
   "engines": {
-    "node": "20.x"
-  },
+  "node": "20.x"
+},
   "dependencies": {
     "discord.js": "14.13.0",
     "distube": "github:distubejs/distube", 

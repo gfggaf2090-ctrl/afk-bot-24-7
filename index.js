@@ -302,12 +302,12 @@ function createBot(config) {
         const originalContent = message.content.trim();
 
         // أمر "aziz" → البحث وتشغيل الأغنية
-        if (content.startsWith("aziz ")) {
+        if (content.startsWith("ش ")) {
             await handlePlayCommand(message, originalContent.replace(/^aziz\s+/, "").trim(), distube);
         }
         // أمر "aziz" بدون كلام → رسالة تنبيه
-        else if (content === "aziz") {
-            message.channel.send("⚠️ اكتب اسم الأغنية بعد الأمر!\nمثال: aziz أم كلثوم");
+        else if (content === "ش") {
+            message.channel.send("⚠️ اكتب اسم الأغنية بعد الأمر!\nمثال: ش أم كلثوم");
         }
         // أمر التشغيل بالبحث (متعدد)
         else if (content.startsWith("شغل ") || content.startsWith("play ") || content.startsWith("p ")) {
@@ -319,7 +319,7 @@ function createBot(config) {
             await handleSkipCommand(message, distube);
         }
         // أوامر الإيقاف (متعددة)
-        else if (["ق", "stop", "إيقاف", "st", "توقف"].includes(content)) {
+        else if (["ق", "stop", "إيقاف", "st", "وقف"].includes(content)) {
             await handleStopCommand(message, distube);
         }
         // أوامر عرض القائمة (متعددة)
@@ -358,7 +358,7 @@ function createBot(config) {
         }
 
         if (!query) {
-            return message.channel.send("⚠️ اكتب اسم الأغنية بعد الأمر!\nمثال: aziz أم كلثوم");
+            return message.channel.send("⚠️ اكتب اسم الأغنية بعد الأمر!\nمثال: ش أم كلثوم");
         }
 
         const loadingMsg = await message.channel.send(`🔍 جاري البحث عن: **${query}**...`);
@@ -584,7 +584,7 @@ function createBot(config) {
             fields: [
                 {
                     name: "🎶 تشغيل الموسيقى",
-                    value: "**aziz [اسم الأغنية]** - البحث وتشغيل أغنية\n**شغل [اسم الأغنية]** - تشغيل أغنية\n**play [song name]** - تشغيل أغنية",
+                    value: "**ش [اسم الأغنية]** - البحث وتشغيل أغنية\n**شغل [اسم الأغنية]** - تشغيل أغنية\n**play [song name]** - تشغيل أغنية",
                     inline: false
                 },
                 {
@@ -599,7 +599,7 @@ function createBot(config) {
                 },
                 {
                     name: "💡 أمثلة على البحث الأمثل",
-                    value: "• aziz فيروز\n• aziz عمرو دياب\n• aziz adele hello\n• aziz محمد عبده",
+                    value: "• ش فيروز\n• ش عمرو دياب\n• ش adele hello\n• ش محمد عبده",
                     inline: false
                 },
                 {
@@ -729,7 +729,7 @@ function createBot(config) {
         })
         .on("finish", queue => {
             // تحديث حالة البوت عند انتهاء القائمة مع Streaming
-            client.user.setActivity('في انتظار أغاني جديدة', { 
+            client.user.setActivity('Aziz', { 
                 type: ActivityType.Streaming,
                 url: 'https://www.twitch.tv/discord'
             });
@@ -745,7 +745,7 @@ function createBot(config) {
         })
         .on("disconnect", queue => {
             // تحديث حالة البوت عند قطع الاتصال مع Streaming
-            client.user.setActivity('منقطع | استخدم "انضم" للعودة', { 
+            client.user.setActivity('aziz', { 
                 type: ActivityType.Streaming,
                 url: 'https://www.twitch.tv/discord'
             });
@@ -816,7 +816,7 @@ function createBot(config) {
         console.log(`🌐 البوت متصل بـ ${client.guilds.cache.size} خادم`);
 
         // تحديث حالة البوت مع Streaming
-        client.user.setActivity('ش [اسم الأغنية] | مساعدة للأوامر', { 
+        client.user.setActivity('Aziz', { 
             type: ActivityType.Streaming,
             url: 'https://www.twitch.tv/discord'
         });
